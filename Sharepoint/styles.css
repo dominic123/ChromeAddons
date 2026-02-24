@@ -96,6 +96,32 @@ header h1 {
     text-align: center;
 }
 
+.check-uncheck-buttons {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.checkbox-result {
+    margin-top: 20px;
+    padding: 12px 15px;
+    border-radius: 6px;
+    font-size: 13px;
+}
+
+.checkbox-result.success {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #a5d6a7;
+}
+
+.checkbox-result.error {
+    background: #ffebee;
+    color: #c62828;
+    border: 1px solid #ef9a9a;
+}
+
 /* Status Section */
 .status-section {
     margin-bottom: 15px;

@@ -5,7 +5,8 @@
   "description": "Upload CSV file to create fields in SharePoint 2019 on-premises lists using JSOM",
   "permissions": [
     "activeTab",
-    "storage"
+    "storage",
+    "scripting"
   ],
   "host_permissions": [
     "<all_urls>"

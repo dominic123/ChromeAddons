@@ -12,6 +12,10 @@ const elements = {
     checkUncheckBtn: document.getElementById('checkUncheckBtn'),
     backBtn: document.getElementById('backBtn'),
     backToWelcomeBtn: document.getElementById('backToWelcomeBtn'),
+    checkAllBtn: document.getElementById('checkAllBtn'),
+    uncheckAllBtn: document.getElementById('uncheckAllBtn'),
+    checkboxResult: document.getElementById('checkboxResult'),
+    checkboxResultText: document.getElementById('checkboxResultText'),
     connectionStatus: document.getElementById('connectionStatus'),
     siteUrl: document.getElementById('siteUrl'),
     listName: document.getElementById('listName'),
@@ -88,6 +92,16 @@ function setupEventListeners() {
     // Back to Welcome button (from Check and Uncheck view)
     if (elements.backToWelcomeBtn) {
         elements.backToWelcomeBtn.addEventListener('click', closeCheckUncheckView);
+    }
+
+    // Check All button
+    if (elements.checkAllBtn) {
+        elements.checkAllBtn.addEventListener('click', checkAllCheckboxes);
+    }
+
+    // Uncheck All button
+    if (elements.uncheckAllBtn) {
+        elements.uncheckAllBtn.addEventListener('click', uncheckAllCheckboxes);
     }
 
     // Connect button
@@ -670,5 +684,89 @@ function closeCheckUncheckView() {
     if (elements.welcomeScreen && elements.checkUncheckView) {
         elements.checkUncheckView.classList.add('hidden');
         elements.welcomeScreen.classList.remove('hidden');
+    }
+}
+
+// Checkbox Functions
+async function checkAllCheckboxes() {
+    try {
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tabs[0]) {
+            showCheckboxResult('error', 'No active tab found');
+            return;
+        }
+
+        const results = await chrome.scripting.executeScript({
+            target: { tabId: tabs[0].id },
+            func: () => {
+                const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+                let checkedCount = 0;
+                checkboxes.forEach(checkbox => {
+                    if (!checkbox.disabled) {
+                        checkbox.checked = true;
+                        checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                        checkedCount++;
+                    }
+                });
+                return { checkedCount, totalCheckboxes: checkboxes.length };
+            }
+        });
+
+        if (results && results[0] && results[0].result) {
+            const { checkedCount, totalCheckboxes } = results[0].result;
+            showCheckboxResult('success', `Checked ${checkedCount} of ${totalCheckboxes} checkboxes`);
+        } else {
+            showCheckboxResult('error', 'Failed to check checkboxes');
+        }
+    } catch (error) {
+        showCheckboxResult('error', 'Error: ' + error.message);
+    }
+}
+
+async function uncheckAllCheckboxes() {
+    try {
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tabs[0]) {
+            showCheckboxResult('error', 'No active tab found');
+            return;
+        }
+
+        const results = await chrome.scripting.executeScript({
+            target: { tabId: tabs[0].id },
+            func: () => {
+                const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+                let uncheckedCount = 0;
+                checkboxes.forEach(checkbox => {
+                    if (!checkbox.disabled) {
+                        checkbox.checked = false;
+                        checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                        uncheckedCount++;
+                    }
+                });
+                return { uncheckedCount, totalCheckboxes: checkboxes.length };
+            }
+        });
+
+        if (results && results[0] && results[0].result) {
+            const { uncheckedCount, totalCheckboxes } = results[0].result;
+            showCheckboxResult('success', `Unchecked ${uncheckedCount} of ${totalCheckboxes} checkboxes`);
+        } else {
+            showCheckboxResult('error', 'Failed to uncheck checkboxes');
+        }
+    } catch (error) {
+        showCheckboxResult('error', 'Error: ' + error.message);
+    }
+}
+
+function showCheckboxResult(type, message) {
+    if (elements.checkboxResult && elements.checkboxResultText) {
+        elements.checkboxResultText.textContent = message;
+        elements.checkboxResult.className = 'checkbox-result ' + type;
+        elements.checkboxResult.classList.remove('hidden');
+
+        // Auto-hide after 3 seconds
+        setTimeout(() => {
+            elements.checkboxResult.classList.add('hidden');
+        }, 3000);
     }
 }

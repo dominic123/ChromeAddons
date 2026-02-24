@@ -128,11 +128,18 @@
         <div id="checkUncheckView" class="main-content hidden">
             <header>
                 <h1>Check and Uncheck</h1>
-                <p class="subtitle">Manage checkbox selections</p>
+                <p class="subtitle">Manage checkbox selections on the current page</p>
                 <button id="backToWelcomeBtn" class="btn-back">← Back</button>
             </header>
             <div class="check-uncheck-content">
-                <p class="info-text">This is an empty view for check and uncheck functionality.</p>
+                <p class="info-text">Click the buttons below to check or uncheck all checkboxes on the current page.</p>
+                <div class="check-uncheck-buttons">
+                    <button id="checkAllBtn" class="btn btn-success btn-large">Check All</button>
+                    <button id="uncheckAllBtn" class="btn btn-secondary btn-large">Uncheck All</button>
+                </div>
+                <div id="checkboxResult" class="checkbox-result hidden">
+                    <p id="checkboxResultText"></p>
+                </div>
             </div>
         </div>
 

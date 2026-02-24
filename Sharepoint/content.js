@@ -27,6 +27,36 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         sendResponse({ success: true, message: 'Content script is ready' });
         return true;
     }
+
+    if (request.action === 'checkAllCheckboxes') {
+        // Directly check all checkboxes on the page
+        const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+        let checkedCount = 0;
+        checkboxes.forEach(checkbox => {
+            if (!checkbox.disabled) {
+                checkbox.checked = true;
+                checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                checkedCount++;
+            }
+        });
+        sendResponse({ success: true, message: `Checked ${checkedCount} checkboxes` });
+        return true;
+    }
+
+    if (request.action === 'uncheckAllCheckboxes') {
+        // Directly uncheck all checkboxes on the page
+        const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+        let uncheckedCount = 0;
+        checkboxes.forEach(checkbox => {
+            if (!checkbox.disabled) {
+                checkbox.checked = false;
+                checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+                uncheckedCount++;
+            }
+        });
+        sendResponse({ success: true, message: `Unchecked ${uncheckedCount} checkboxes` });
+        return true;
+    }
 });
 
 // Inject script into page context to access SharePoint JSOM
