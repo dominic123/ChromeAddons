@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YouTube Channel Blocker</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>YouTube Channel Blocker</h1>
+      <p class="subtitle">Manage your blocked channels</p>
+    </header>
+
+    <!-- PIN Settings Section -->
+    <div class="pin-section">
+      <div class="pin-header">
+        <span class="pin-title">🔒 Parental Lock PIN</span>
+        <span id="pinStatus" class="pin-status not-set">Not Set</span>
+      </div>
+      <div id="pinSetup" class="pin-setup">
+        <input type="password" id="newPinInput" class="pin-input" placeholder="Set new PIN (4-6 digits)" maxlength="6">
+        <button id="setPinBtn" class="set-pin-btn">Set PIN</button>
+      </div>
+      <div id="pinChange" class="pin-change hidden">
+        <input type="password" id="currentPinInput" class="pin-input" placeholder="Current PIN" maxlength="6">
+        <input type="password" id="newPinInput2" class="pin-input" placeholder="New PIN (4-6 digits)" maxlength="6">
+        <div class="button-row">
+          <button id="updatePinBtn" class="update-pin-btn">Update PIN</button>
+          <button id="removePinBtn" class="remove-pin-btn">Remove PIN</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="add-channel">
+      <input type="text" id="channelInput" placeholder="Enter channel ID or URL">
+      <input type="text" id="channelNameInput" placeholder="Channel name (optional)">
+      <button id="addBtn">Block Channel</button>
+    </div>
+
+    <div class="stats">
+      <span id="channelCount">0 channels blocked</span>
+      <button id="unblockAllBtn" class="unblock-all-btn">Unblock All</button>
+    </div>
+
+    <div class="channel-list" id="channelList">
+      <p class="empty-message">No blocked channels yet</p>
+    </div>
+
+    <div class="instructions">
+      <h3>How to Block:</h3>
+      <ol>
+        <li>Visit any YouTube channel page</li>
+        <li>Click the red "Block Channel" button</li>
+        <li>Or manually add channel ID above</li>
+      </ol>
+      <h3>Parental Lock:</h3>
+      <p>Set a PIN to require unlocking blocked content. Without a PIN, blocked content is completely hidden.</p>
+      <h3>⚠️ Important:</h3>
+      <p><strong>For better security:</strong> Create a <strong>Supervised Account</strong> for your child in Chrome settings. This prevents extension removal without parent permission.</p>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

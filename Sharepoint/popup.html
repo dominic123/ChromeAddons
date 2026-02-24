@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SharePoint Field Creator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>SharePoint Field Creator</h1>
+            <p class="subtitle">Create fields from CSV using JSOM</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Connection Status -->
+            <div class="status-section">
+                <div id="connectionStatus" class="status-indicator">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Not connected to SharePoint</span>
+                </div>
+            </div>
+
+            <!-- SharePoint Configuration -->
+            <div class="config-section">
+                <h3>SharePoint Configuration</h3>
+                <div class="auto-detect-badge" id="autoDetectBadge">
+                    <span class="badge-icon">✓</span>
+                    <span class="badge-text" id="badgeText">Auto-detected from current page</span>
+                </div>
+                <div class="form-group">
+                    <label for="siteUrl">SharePoint Site URL:</label>
+                    <input type="text" id="siteUrl" placeholder="Auto-detecting..." readonly>
+                </div>
+                <div class="form-group">
+                    <label for="listName">List Name:</label>
+                    <input type="text" id="listName" placeholder="Enter list name or navigate to a list page">
+                    <small class="help-text">Navigate to /Lists/YourList/AllItems.aspx for auto-detect</small>
+                </div>
+                <div class="button-row">
+                    <button id="connectBtn" class="btn btn-primary">Connect to SharePoint</button>
+                    <button id="refreshBtn" class="btn btn-secondary" title="Refresh from current page">🔄</button>
+                </div>
+            </div>
+
+            <!-- CSV Upload Section -->
+            <div class="upload-section">
+                <h3>CSV File Upload</h3>
+                <p class="info-text">CSV Format: FieldName,DataType,DisplayName,Description,Required</p>
+                <div class="drop-zone" id="dropZone">
+                    <input type="file" id="csvFile" accept=".csv" hidden>
+                    <label for="csvFile" class="file-label">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <span>Click or drag CSV file here</span>
+                    </label>
+                </div>
+                <div id="fileInfo" class="file-info hidden">
+                    <span id="fileName"></span>
+                    <button id="clearFile" class="btn-small">✕</button>
+                </div>
+            </div>
+
+            <!-- CSV Preview -->
+            <div id="previewSection" class="preview-section hidden">
+                <h3>CSV Preview</h3>
+                <div class="table-container">
+                    <table id="previewTable">
+                        <thead>
+                            <tr>
+                                <th>Field Name</th>
+                                <th>Data Type</th>
+                                <th>Display Name</th>
+                                <th>Description</th>
+                                <th>Required</th>
+                            </tr>
+                        </thead>
+                        <tbody id="previewBody"></tbody>
+                    </table>
+                </div>
+                <div class="preview-count">
+                    <span id="fieldCount">0 fields to create</span>
+                </div>
+            </div>
+
+            <!-- Progress Section -->
+            <div id="progressSection" class="progress-section hidden">
+                <h3>Creating Fields...</h3>
+                <div class="progress-bar">
+                    <div id="progressFill" class="progress-fill"></div>
+                </div>
+                <div id="progressText" class="progress-text">0 / 0</div>
+            </div>
+
+            <!-- Results Section -->
+            <div id="resultsSection" class="results-section hidden">
+                <h3>Results</h3>
+                <div id="resultsContent"></div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="action-section">
+                <button id="createFieldsBtn" class="btn btn-success" disabled>Create Fields</button>
+                <button id="resetBtn" class="btn btn-secondary">Reset</button>
+            </div>
+        </div>
+
+        <!-- Data Type Reference -->
+        <div class="reference-section">
+            <details>
+                <summary>Supported Data Types (click to expand)</summary>
+                <div class="reference-content">
+                    <table>
+                        <tr><th>Type</th><th>Description</th></tr>
+                        <tr><td>Text</td><td>Single line of text</td></tr>
+                        <tr><td>Note</td><td>Multiple lines of text</td></tr>
+                        <tr><td>Number</td><td>Numeric values</td></tr>
+                        <tr><td>Integer</td><td>Whole numbers</td></tr>
+                        <tr><td>Currency</td><td>Currency values</td></tr>
+                        <tr><td>DateTime</td><td>Date and time</td></tr>
+                        <tr><td>Boolean</td><td>Yes/No checkbox</td></tr>
+                        <tr><td>User</td><td>Person or Group</td></tr>
+                        <tr><td>Lookup</td><td>Lookup to another list</td></tr>
+                        <tr><td>Choice</td><td>Choice field</td></tr>
+                        <tr><td>URL</td><td>Hyperlink</td></tr>
+                    </table>
+                </div>
+            </details>
+        </div>
+    </div>
+
+    <script src="popup.js"></script>
+</body>
+</html>

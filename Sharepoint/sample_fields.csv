@@ -1,0 +1,13 @@
+FieldName,DataType,DisplayName,Description,Required
+EmployeeID,Text,Employee ID,Unique employee identifier,Yes
+FirstName,Text,First Name,Employee's first name,Yes
+LastName,Text,Last Name,Employee's last name,Yes
+Department,Choice,Department,Select department,No
+EmailAddress,Text,Email Address,Primary email address,Yes
+PhoneNumber,Text,Phone Number,Contact phone number,No
+HireDate,DateTime,Hire Date,Date of hire,No
+Salary,Currency,Salary,Annual salary,No
+IsActive,Boolean,Is Active,Employee status,No
+Notes,Note,Notes,Additional comments,No
+Manager,User,Manager,Direct manager,No
+ProfileURL,URL,Profile URL,Link to profile page,No

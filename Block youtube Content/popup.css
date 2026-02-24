@@ -1,0 +1,315 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  width: 420px;
+  min-height: 450px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  background: #f9f9f9;
+}
+
+.container {
+  padding: 16px;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+h1 {
+  font-size: 18px;
+  color: #212121;
+  margin-bottom: 4px;
+}
+
+.subtitle {
+  font-size: 12px;
+  color: #757575;
+}
+
+/* PIN Section */
+.pin-section {
+  background: linear-gradient(135deg, #e8f0fe 0%, #f3e8fd 100%);
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+
+.pin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.pin-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #1967d2;
+}
+
+.pin-status {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.pin-status.not-set {
+  background: #f1f3f4;
+  color: #666;
+}
+
+.pin-status.set {
+  background: #34a853;
+  color: white;
+}
+
+.pin-setup, .pin-change {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pin-change.hidden {
+  display: none;
+}
+
+.pin-input {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  text-align: center;
+  letter-spacing: 2px;
+}
+
+.pin-input:focus {
+  outline: none;
+  border-color: #065fd4;
+}
+
+.set-pin-btn, .update-pin-btn {
+  padding: 10px 16px;
+  background: #065fd4;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.set-pin-btn:hover, .update-pin-btn:hover {
+  background: #0550b8;
+}
+
+.remove-pin-btn {
+  padding: 10px 16px;
+  background: #f1f3f4;
+  color: #d93025;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.remove-pin-btn:hover {
+  background: #ffe8e6;
+}
+
+.button-row {
+  display: flex;
+  gap: 8px;
+}
+
+.add-channel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.add-channel input {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.add-channel input:focus {
+  outline: none;
+  border-color: #065fd4;
+}
+
+#addBtn {
+  padding: 10px 16px;
+  background: #065fd4;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+#addBtn:hover {
+  background: #0550b8;
+}
+
+.stats {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #e8f0fe;
+  border-radius: 4px;
+  margin-bottom: 16px;
+}
+
+#channelCount {
+  font-size: 13px;
+  color: #1967d2;
+  font-weight: 500;
+}
+
+.unblock-all-btn {
+  padding: 6px 12px;
+  background: #d93025;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.unblock-all-btn:hover {
+  background: #b92b1f;
+}
+
+.channel-list {
+  max-height: 250px;
+  overflow-y: auto;
+  margin-bottom: 16px;
+}
+
+.empty-message {
+  text-align: center;
+  color: #757575;
+  font-size: 14px;
+  padding: 32px 16px;
+}
+
+.channel-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  background: white;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.channel-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.channel-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #212121;
+  margin-bottom: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.channel-id {
+  font-size: 11px;
+  color: #757575;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unblock-btn {
+  padding: 6px 12px;
+  background: #fff;
+  color: #d93025;
+  border: 1px solid #d93025;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.unblock-btn:hover {
+  background: #d93025;
+  color: white;
+}
+
+.instructions {
+  background: #f1f3f4;
+  padding: 12px;
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.instructions h3 {
+  font-size: 13px;
+  margin-bottom: 8px;
+  margin-top: 12px;
+  color: #212121;
+}
+
+.instructions h3:first-child {
+  margin-top: 0;
+}
+
+.instructions p {
+  color: #5f6368;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.instructions ol {
+  margin-left: 18px;
+  color: #5f6368;
+}
+
+.instructions li {
+  margin-bottom: 4px;
+}
+
+.channel-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.channel-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.channel-list::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.channel-list::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
