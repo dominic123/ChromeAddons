@@ -5,6 +5,10 @@ let currentTabId = null;
 
 // DOM Elements
 const elements = {
+    welcomeScreen: document.getElementById('welcomeScreen'),
+    mainForm: document.getElementById('mainForm'),
+    openFormBtn: document.getElementById('openFormBtn'),
+    backBtn: document.getElementById('backBtn'),
     connectionStatus: document.getElementById('connectionStatus'),
     siteUrl: document.getElementById('siteUrl'),
     listName: document.getElementById('listName'),
@@ -63,6 +67,16 @@ async function initialize() {
 }
 
 function setupEventListeners() {
+    // Open Form button (SharePoint Field Creator)
+    if (elements.openFormBtn) {
+        elements.openFormBtn.addEventListener('click', openMainForm);
+    }
+
+    // Back button
+    if (elements.backBtn) {
+        elements.backBtn.addEventListener('click', closeMainForm);
+    }
+
     // Connect button
     elements.connectBtn.addEventListener('click', connectToSharePoint);
 
@@ -615,4 +629,19 @@ function escapeHtml(text) {
 
 function delay(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Screen Navigation Functions
+function openMainForm() {
+    if (elements.welcomeScreen && elements.mainForm) {
+        elements.welcomeScreen.classList.add('hidden');
+        elements.mainForm.classList.remove('hidden');
+    }
+}
+
+function closeMainForm() {
+    if (elements.welcomeScreen && elements.mainForm) {
+        elements.mainForm.classList.add('hidden');
+        elements.welcomeScreen.classList.remove('hidden');
+    }
 }

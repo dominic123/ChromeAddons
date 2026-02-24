@@ -8,12 +8,26 @@
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>SharePoint Field Creator</h1>
-            <p class="subtitle">Create fields from CSV using JSOM</p>
-        </header>
+        <!-- Welcome Screen -->
+        <div id="welcomeScreen" class="welcome-screen">
+            <header>
+                <h1>SharePoint Field Creator</h1>
+                <p class="subtitle">Create fields from CSV using JSOM</p>
+            </header>
+            <div class="welcome-content">
+                <div class="welcome-icon">📋</div>
+                <p class="welcome-text">Click the button below to access the SharePoint Field Creator form and start creating fields from your CSV files.</p>
+                <button id="openFormBtn" class="btn btn-primary btn-large">SharePoint Field Creator</button>
+            </div>
+        </div>
 
-        <div class="main-content">
+        <!-- Main Form (hidden by default) -->
+        <div id="mainForm" class="main-content hidden">
+            <header>
+                <h1>SharePoint Field Creator</h1>
+                <p class="subtitle">Create fields from CSV using JSOM</p>
+                <button id="backBtn" class="btn-back">← Back</button>
+            </header>
             <!-- Connection Status -->
             <div class="status-section">
                 <div id="connectionStatus" class="status-indicator">
