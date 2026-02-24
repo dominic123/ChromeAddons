@@ -8,14 +8,20 @@ const elements = {
     welcomeScreen: document.getElementById('welcomeScreen'),
     mainForm: document.getElementById('mainForm'),
     checkUncheckView: document.getElementById('checkUncheckView'),
+    listCountView: document.getElementById('listCountView'),
     openFormBtn: document.getElementById('openFormBtn'),
     checkUncheckBtn: document.getElementById('checkUncheckBtn'),
+    listCountBtn: document.getElementById('listCountBtn'),
     backBtn: document.getElementById('backBtn'),
     backToWelcomeBtn: document.getElementById('backToWelcomeBtn'),
+    backToWelcomeFromListCountBtn: document.getElementById('backToWelcomeFromListCountBtn'),
     checkAllBtn: document.getElementById('checkAllBtn'),
     uncheckAllBtn: document.getElementById('uncheckAllBtn'),
     checkboxResult: document.getElementById('checkboxResult'),
     checkboxResultText: document.getElementById('checkboxResultText'),
+    runListCountBtn: document.getElementById('runListCountBtn'),
+    listCountResult: document.getElementById('listCountResult'),
+    listCountContent: document.getElementById('listCountContent'),
     connectionStatus: document.getElementById('connectionStatus'),
     siteUrl: document.getElementById('siteUrl'),
     listName: document.getElementById('listName'),
@@ -102,6 +108,21 @@ function setupEventListeners() {
     // Uncheck All button
     if (elements.uncheckAllBtn) {
         elements.uncheckAllBtn.addEventListener('click', uncheckAllCheckboxes);
+    }
+
+    // List Count Aggregator button
+    if (elements.listCountBtn) {
+        elements.listCountBtn.addEventListener('click', openListCountView);
+    }
+
+    // Back to Welcome button (from List Count view)
+    if (elements.backToWelcomeFromListCountBtn) {
+        elements.backToWelcomeFromListCountBtn.addEventListener('click', closeListCountView);
+    }
+
+    // Run List Count button
+    if (elements.runListCountBtn) {
+        elements.runListCountBtn.addEventListener('click', runListCountAggregation);
     }
 
     // Connect button
@@ -687,6 +708,20 @@ function closeCheckUncheckView() {
     }
 }
 
+function openListCountView() {
+    if (elements.welcomeScreen && elements.listCountView) {
+        elements.welcomeScreen.classList.add('hidden');
+        elements.listCountView.classList.remove('hidden');
+    }
+}
+
+function closeListCountView() {
+    if (elements.welcomeScreen && elements.listCountView) {
+        elements.listCountView.classList.add('hidden');
+        elements.welcomeScreen.classList.remove('hidden');
+    }
+}
+
 // Checkbox Functions
 async function checkAllCheckboxes() {
     try {
@@ -768,5 +803,279 @@ function showCheckboxResult(type, message) {
         setTimeout(() => {
             elements.checkboxResult.classList.add('hidden');
         }, 3000);
+    }
+}
+
+// List Count Aggregator Functions
+async function runListCountAggregation() {
+    try {
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tabs[0]) {
+            showListCountError('No active tab found');
+            return;
+        }
+
+        // Check if current page is a SharePoint page
+        const currentUrl = tabs[0].url;
+        const isSharePointPage = currentUrl.includes('/sites/') ||
+                                currentUrl.includes('/Lists/') ||
+                                currentUrl.includes('/_layouts/') ||
+                                currentUrl.includes('.aspx');
+
+        if (!isSharePointPage) {
+            showListCountError(`
+                <p style="margin: 0 0 10px 0; font-weight: bold;">Not on a SharePoint Page</p>
+                <p style="margin: 0;">Please navigate to a SharePoint page (e.g., a site home, list view, or any .aspx page) before running the analysis.</p>
+                <p style="margin: 10px 0 0 0; font-size: 11px; color: #666;">Current URL: ${currentUrl.substring(0, 60)}${currentUrl.length > 60 ? '...' : ''}</p>
+            `);
+            return;
+        }
+
+        // Show loading state
+        elements.listCountResult.classList.remove('hidden');
+        elements.listCountContent.innerHTML = '<p style="text-align: center; color: #667eea;">Running analysis... Please wait.</p>';
+
+        const results = await chrome.scripting.executeScript({
+            target: { tabId: tabs[0].id },
+            func: () => {
+                // Configuration
+                const MIN_ITEM_COUNT_THRESHOLD = 3500;
+
+                // Helper function to encode HTML
+                const htmlEncode = (str) => {
+                    if (str === null || str === undefined) return '';
+                    return String(str).replace(/[&<>"']/g, function(s) {
+                        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[s];
+                    });
+                };
+
+                // Function to get request digest
+                const getRequestDigest = async (siteUrl) => {
+                    try {
+                        const response = await fetch(siteUrl + "/_api/contextinfo", {
+                            method: "POST",
+                            headers: { "Accept": "application/json; odata=verbose" }
+                        });
+                        const data = await response.json();
+                        return data.d.GetContextWebInformation.FormDigestValue;
+                    } catch (error) {
+                        console.warn(`Could not get digest for ${siteUrl}`, error);
+                        return null;
+                    }
+                };
+
+                // Function to recursively find all subsites
+                async function getSubsiteUrls(rootWebUrl) {
+                    const subsiteUrls = [rootWebUrl];
+                    let queue = [rootWebUrl];
+
+                    while (queue.length > 0) {
+                        const currentUrl = queue.shift();
+
+                        try {
+                            const restUrl = `${currentUrl}/_api/web/webs?$select=Title,Url`;
+                            const response = await fetch(restUrl, {
+                                method: "GET",
+                                headers: { "Accept": "application/json; odata=verbose" }
+                            });
+                            const data = await response.json();
+                            const webs = data.d.results;
+
+                            webs.forEach(web => {
+                                const subsiteUrl = web.Url.replace(/\/$/, '');
+                                if (!subsiteUrls.includes(subsiteUrl)) {
+                                    subsiteUrls.push(subsiteUrl);
+                                    queue.push(subsiteUrl);
+                                }
+                            });
+                        } catch (error) {
+                            console.warn(`Could not access webs for URL: ${currentUrl}. Skipping.`, error);
+                        }
+                    }
+                    return subsiteUrls;
+                }
+
+                // Function to get filtered lists for a single site
+                async function getFilteredListsForSite(siteUrl) {
+                    const digest = await getRequestDigest(siteUrl);
+                    if (!digest) {
+                        return [{
+                            siteUrl: siteUrl,
+                            title: 'ERROR FETCHING LISTS',
+                            count: 'Digest Error/No Access',
+                            type: ''
+                        }];
+                    }
+
+                    try {
+                        const restUrl = `${siteUrl}/_api/web/lists?$select=Title,ItemCount,BaseType`;
+                        const response = await fetch(restUrl, {
+                            method: "GET",
+                            headers: {
+                                "Accept": "application/json; odata=verbose",
+                                "X-RequestDigest": digest
+                            }
+                        });
+                        const data = await response.json();
+                        const allLists = data.d.results;
+
+                        return allLists
+                            .filter(list => list.ItemCount > MIN_ITEM_COUNT_THRESHOLD)
+                            .map(list => ({
+                                siteUrl: siteUrl,
+                                title: list.Title,
+                                count: list.ItemCount,
+                                type: list.BaseType === 1 ? 'Library' : 'List'
+                            }));
+
+                    } catch (error) {
+                        console.error(`Error fetching lists for ${siteUrl}`, error);
+                        return [{
+                            siteUrl: siteUrl,
+                            title: 'ERROR FETCHING LISTS',
+                            count: `Error (${error.status || 'Unknown'})`,
+                            type: ''
+                        }];
+                    }
+                }
+
+                // Main aggregation logic
+                async function runAggregation() {
+                    let rootWebUrl = '';
+
+                    // Try to get SharePoint context first
+                    if (typeof _spPageContextInfo !== 'undefined') {
+                        rootWebUrl = _spPageContextInfo.webAbsoluteUrl.replace(/\/$/, '');
+                    } else {
+                        // Fall back to using the current page URL
+                        const currentUrl = window.location.href;
+                        // Check if it looks like a SharePoint URL
+                        if (currentUrl.includes('/sites/') || currentUrl.includes('/Lists/') || currentUrl.includes('/_layouts/')) {
+                            // Extract the base site URL
+                            const urlObj = new URL(currentUrl);
+                            // Try to find the site base URL
+                            const sitesMatch = currentUrl.match(/(https?:\/\/[^\/]+\/sites\/[^\/]+)/);
+                            if (sitesMatch) {
+                                rootWebUrl = sitesMatch[1];
+                            } else {
+                                // Use origin as fallback
+                                rootWebUrl = urlObj.origin;
+                            }
+                        } else {
+                            return {
+                                error: 'SharePoint context not found. Please navigate to a SharePoint page.',
+                                html: ''
+                            };
+                        }
+                    }
+
+                    if (!rootWebUrl) {
+                        return {
+                            error: 'Could not determine SharePoint site URL. Please navigate to a SharePoint page.',
+                            html: ''
+                        };
+                    }
+
+                    // Get all subsite URLs recursively
+                    const allSiteUrls = await getSubsiteUrls(rootWebUrl);
+
+                    // Fetch filtered lists for all sites concurrently
+                    const fetchPromises = allSiteUrls.map(siteUrl => getFilteredListsForSite(siteUrl));
+                    const resultsArray = await Promise.all(fetchPromises);
+
+                    // Flatten and filter out errors
+                    const allFilteredLists = resultsArray.flat().filter(res => res.title !== 'ERROR FETCHING LISTS');
+
+                    // Build HTML output
+                    let htmlOutput = `
+                        <div style="margin-bottom: 15px; font-weight: bold;">
+                            Found ${allFilteredLists.length} lists/libraries with >${MIN_ITEM_COUNT_THRESHOLD} items.
+                        </div>
+                        <div style="border: 1px solid #ccc; padding: 10px; background-color: #f9f9f9; max-height: 400px; overflow-y: auto;">
+                    `;
+
+                    if (allFilteredLists.length === 0) {
+                        htmlOutput += `<p style="color: green; font-weight: bold;">No lists found with more than ${MIN_ITEM_COUNT_THRESHOLD} items across all accessible subsites.</p>`;
+                    } else {
+                        htmlOutput += `
+                            <table style="border-collapse: collapse; width: 100%; font-size: 12px;">
+                                <thead>
+                                    <tr style="background-color: #eee; position: sticky; top: 0;">
+                                        <th style="border: 1px solid #ccc; padding: 8px; text-align: left; width: 45%;">Site URL</th>
+                                        <th style="border: 1px solid #ccc; padding: 8px; text-align: left; width: 35%;">List Name (Type)</th>
+                                        <th style="border: 1px solid #ccc; padding: 8px; text-align: right; width: 20%;">Item Count</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                        `;
+
+                        allFilteredLists.forEach(res => {
+                            const safeUrl = htmlEncode(res.siteUrl);
+                            const safeTitle = htmlEncode(res.title);
+                            const safeCount = htmlEncode(res.count);
+                            const typeInfo = ` (${res.type})`;
+
+                            htmlOutput += `
+                                <tr>
+                                    <td style="border: 1px solid #ccc; padding: 8px;">
+                                        <a href="${res.siteUrl}" target="_blank" style="color: #667eea; text-decoration: none;">${safeUrl}</a>
+                                    </td>
+                                    <td style="border: 1px solid #ccc; padding: 8px;">${safeTitle} ${typeInfo}</td>
+                                    <td style="border: 1px solid #ccc; padding: 8px; text-align: right; font-weight: bold; color: #CC0000;">${safeCount}</td>
+                                </tr>
+                            `;
+                        });
+                        htmlOutput += '</tbody></table>';
+                    }
+
+                    htmlOutput += '</div>';
+
+                    return {
+                        error: null,
+                        html: htmlOutput,
+                        totalSites: allSiteUrls.length
+                    };
+                }
+
+                return runAggregation();
+            }
+        });
+
+        if (results && results[0] && results[0].result) {
+            const { error, html, totalSites } = results[0].result;
+
+            if (error) {
+                showListCountError(error);
+            } else {
+                showListCountSuccess(html, totalSites);
+            }
+        } else {
+            showListCountError('Failed to run analysis');
+        }
+    } catch (error) {
+        showListCountError('Error: ' + error.message);
+    }
+}
+
+function showListCountError(message) {
+    if (elements.listCountResult && elements.listCountContent) {
+        elements.listCountContent.innerHTML = `
+            <div style="padding: 15px; background: #ffebee; border: 1px solid #ef9a9a; border-radius: 6px; color: #c62828;">
+                <p style="margin: 0; font-weight: bold;">Error</p>
+                <p style="margin: 5px 0 0 0;">${message}</p>
+            </div>
+        `;
+    }
+}
+
+function showListCountSuccess(html, totalSites) {
+    if (elements.listCountResult && elements.listCountContent) {
+        elements.listCountContent.innerHTML = `
+            <div style="margin-bottom: 10px; padding: 10px; background: #e8f5e9; border: 1px solid #a5d6a7; border-radius: 6px; color: #2e7d32;">
+                <p style="margin: 0; font-weight: bold;">Analysis Complete</p>
+                <p style="margin: 5px 0 0 0;">Scanned ${totalSites} sites successfully.</p>
+            </div>
+            ${html}
+        `;
     }
 }

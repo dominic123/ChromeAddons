@@ -122,6 +122,32 @@ header h1 {
     border: 1px solid #ef9a9a;
 }
 
+/* List Count Content */
+.list-count-content {
+    padding: 40px 30px;
+    text-align: center;
+}
+
+.list-count-buttons {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.list-count-result {
+    margin-top: 20px;
+    text-align: left;
+}
+
+.list-count-result table {
+    font-size: 11px;
+}
+
+.list-count-result a {
+    word-break: break-all;
+}
+
 /* Status Section */
 .status-section {
     margin-bottom: 15px;

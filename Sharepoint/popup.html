@@ -19,6 +19,7 @@
                 <p class="welcome-text">Click the button below to access the SharePoint Field Creator form and start creating fields from your CSV files.</p>
                 <button id="openFormBtn" class="btn btn-primary btn-large">SharePoint Field Creator</button>
                 <button id="checkUncheckBtn" class="btn btn-secondary btn-large">Check and uncheck</button>
+                <button id="listCountBtn" class="btn btn-primary btn-large">List Count Aggregator</button>
             </div>
         </div>
 
@@ -139,6 +140,24 @@
                 </div>
                 <div id="checkboxResult" class="checkbox-result hidden">
                     <p id="checkboxResultText"></p>
+                </div>
+            </div>
+        </div>
+
+        <!-- List Count Aggregator View (hidden by default) -->
+        <div id="listCountView" class="main-content hidden">
+            <header>
+                <h1>List Count Aggregator</h1>
+                <p class="subtitle">Recursive subsite list count analysis</p>
+                <button id="backToWelcomeFromListCountBtn" class="btn-back">← Back</button>
+            </header>
+            <div class="list-count-content">
+                <p class="info-text">Fetches lists with >3500 items from all subsites recursively.</p>
+                <div class="list-count-buttons">
+                    <button id="runListCountBtn" class="btn btn-success btn-large">Run Analysis</button>
+                </div>
+                <div id="listCountResult" class="list-count-result hidden">
+                    <div id="listCountContent"></div>
                 </div>
             </div>
         </div>
