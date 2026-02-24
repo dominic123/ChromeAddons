@@ -38,6 +38,9 @@ body {
     padding: 15px 40px;
     font-size: 16px;
     border-radius: 50px;
+    margin: 5px 0;
+    display: block;
+    width: 100%;
 }
 
 /* Back Button */
@@ -85,6 +88,12 @@ header h1 {
 
 .main-content {
     padding: 20px;
+}
+
+/* Check and Uncheck Content */
+.check-uncheck-content {
+    padding: 40px 30px;
+    text-align: center;
 }
 
 /* Status Section */

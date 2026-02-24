@@ -7,8 +7,11 @@ let currentTabId = null;
 const elements = {
     welcomeScreen: document.getElementById('welcomeScreen'),
     mainForm: document.getElementById('mainForm'),
+    checkUncheckView: document.getElementById('checkUncheckView'),
     openFormBtn: document.getElementById('openFormBtn'),
+    checkUncheckBtn: document.getElementById('checkUncheckBtn'),
     backBtn: document.getElementById('backBtn'),
+    backToWelcomeBtn: document.getElementById('backToWelcomeBtn'),
     connectionStatus: document.getElementById('connectionStatus'),
     siteUrl: document.getElementById('siteUrl'),
     listName: document.getElementById('listName'),
@@ -72,9 +75,19 @@ function setupEventListeners() {
         elements.openFormBtn.addEventListener('click', openMainForm);
     }
 
+    // Check and Uncheck button
+    if (elements.checkUncheckBtn) {
+        elements.checkUncheckBtn.addEventListener('click', openCheckUncheckView);
+    }
+
     // Back button
     if (elements.backBtn) {
         elements.backBtn.addEventListener('click', closeMainForm);
+    }
+
+    // Back to Welcome button (from Check and Uncheck view)
+    if (elements.backToWelcomeBtn) {
+        elements.backToWelcomeBtn.addEventListener('click', closeCheckUncheckView);
     }
 
     // Connect button
@@ -642,6 +655,20 @@ function openMainForm() {
 function closeMainForm() {
     if (elements.welcomeScreen && elements.mainForm) {
         elements.mainForm.classList.add('hidden');
+        elements.welcomeScreen.classList.remove('hidden');
+    }
+}
+
+function openCheckUncheckView() {
+    if (elements.welcomeScreen && elements.checkUncheckView) {
+        elements.welcomeScreen.classList.add('hidden');
+        elements.checkUncheckView.classList.remove('hidden');
+    }
+}
+
+function closeCheckUncheckView() {
+    if (elements.welcomeScreen && elements.checkUncheckView) {
+        elements.checkUncheckView.classList.add('hidden');
         elements.welcomeScreen.classList.remove('hidden');
     }
 }

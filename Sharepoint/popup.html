@@ -18,6 +18,7 @@
                 <div class="welcome-icon">📋</div>
                 <p class="welcome-text">Click the button below to access the SharePoint Field Creator form and start creating fields from your CSV files.</p>
                 <button id="openFormBtn" class="btn btn-primary btn-large">SharePoint Field Creator</button>
+                <button id="checkUncheckBtn" class="btn btn-secondary btn-large">Check and uncheck</button>
             </div>
         </div>
 
@@ -120,6 +121,18 @@
             <div class="action-section">
                 <button id="createFieldsBtn" class="btn btn-success" disabled>Create Fields</button>
                 <button id="resetBtn" class="btn btn-secondary">Reset</button>
+            </div>
+        </div>
+
+        <!-- Check and Uncheck View (hidden by default) -->
+        <div id="checkUncheckView" class="main-content hidden">
+            <header>
+                <h1>Check and Uncheck</h1>
+                <p class="subtitle">Manage checkbox selections</p>
+                <button id="backToWelcomeBtn" class="btn-back">← Back</button>
+            </header>
+            <div class="check-uncheck-content">
+                <p class="info-text">This is an empty view for check and uncheck functionality.</p>
             </div>
         </div>
 
