@@ -47,6 +47,30 @@
         if (data.type === 'SP_FIELD_CREATOR_CREATE_LIST') {
             handleCreateList(data.siteUrl, data.listName);
         }
+
+        if (data.type === 'SP_FIELD_CREATOR_GET_ALL_LISTS') {
+            handleGetAllLists();
+        }
+
+        if (data.type === 'SP_FIELD_CREATOR_PREVIEW_ITEMS') {
+            handlePreviewItems(data.listTitle, data.camlQuery, data.folderPath);
+        }
+
+        if (data.type === 'SP_FIELD_CREATOR_DELETE_LIST') {
+            handleDeleteListOperation(data.listTitle);
+        }
+
+        if (data.type === 'SP_FIELD_CREATOR_DELETE_ITEMS') {
+            handleDeleteItemsOperation(data.listTitle, data.camlQuery, data.folderPath);
+        }
+
+        if (data.type === 'SP_FIELD_CREATOR_GET_LIST_FIELDS') {
+            handleGetListFields(data.listTitle);
+        }
+
+        if (data.type === 'SP_FIELD_CREATOR_FILTER_ITEMS') {
+            handleFilterListItems(data.listTitle, data.camlQuery, data.rowLimit);
+        }
     });
 
     // Handle connection test
@@ -345,6 +369,412 @@
             } catch (error) {
                 console.error('[SP Field Creator] Exception creating list:', error);
                 sendResponse('SP_FIELD_CREATOR_CREATE_LIST_RESPONSE', {
+                    success: false,
+                    message: `Error: ${error.message}`
+                });
+            }
+        });
+    }
+
+    // Handle get all lists
+    function handleGetAllLists() {
+        ensureSPLoaded(function() {
+            try {
+                const context = SP.ClientContext.get_current();
+                const web = context.get_web();
+                const lists = web.get_lists();
+
+                context.load(lists, 'Include(Title, ItemCount, BaseType)');
+
+                context.executeQueryAsync(
+                    function() {
+                        console.log('[SP Field Creator] Got all lists successfully!');
+                        const listArray = [];
+                        const enumerator = lists.getEnumerator();
+
+                        while (enumerator.moveNext()) {
+                            const list = enumerator.get_current();
+                            listArray.push({
+                                title: list.get_title(),
+                                itemCount: list.get_itemCount(),
+                                baseType: list.get_baseType()
+                            });
+                        }
+
+                        // Sort by title
+                        listArray.sort((a, b) => a.title.localeCompare(b.title));
+
+                        sendResponse('SP_FIELD_CREATOR_GET_ALL_LISTS_RESPONSE', {
+                            success: true,
+                            lists: listArray
+                        });
+                    },
+                    function(sender, args) {
+                        console.error('[SP Field Creator] Error getting lists:', args.get_message());
+                        sendResponse('SP_FIELD_CREATOR_GET_ALL_LISTS_RESPONSE', {
+                            success: false,
+                            message: `Error fetching lists: ${args.get_message()}`
+                        });
+                    }
+                );
+            } catch (error) {
+                console.error('[SP Field Creator] Exception getting lists:', error);
+                sendResponse('SP_FIELD_CREATOR_GET_ALL_LISTS_RESPONSE', {
+                    success: false,
+                    message: `Error: ${error.message}`
+                });
+            }
+        });
+    }
+
+    // Handle preview items
+    function handlePreviewItems(listTitle, camlQuery, folderPath) {
+        ensureSPLoaded(function() {
+            try {
+                const context = SP.ClientContext.get_current();
+                const web = context.get_web();
+                const list = web.get_lists().getByTitle(listTitle);
+
+                const caml = new SP.CamlQuery();
+                caml.set_viewXml(camlQuery);
+
+                let items;
+                if (folderPath) {
+                    caml.set_folderServerRelativeUrl(folderPath);
+                    items = list.getItems(caml);
+                } else {
+                    items = list.getItems(caml);
+                }
+
+                context.load(items, 'Include(Id, Title, FileRef, FileSystemObjectType)');
+
+                context.executeQueryAsync(
+                    function() {
+                        console.log('[SP Field Creator] Got items successfully!');
+                        const itemArray = [];
+                        const enumerator = items.getEnumerator();
+                        while (enumerator.moveNext()) {
+                            const item = enumerator.get_current();
+                            itemArray.push({
+                                id: item.get_id(),
+                                title: item.get_item('Title') || '(no title)',
+                                fileRef: item.get_item('FileRef') || '',
+                                isFolder: item.get_fileSystemObjectType() === 1
+                            });
+                        }
+                        sendResponse('SP_FIELD_CREATOR_PREVIEW_ITEMS_RESPONSE', {
+                            success: true,
+                            items: itemArray
+                        });
+                    },
+                    function(sender, args) {
+                        console.error('[SP Field Creator] Error getting items:', args.get_message());
+                        sendResponse('SP_FIELD_CREATOR_PREVIEW_ITEMS_RESPONSE', {
+                            success: false,
+                            message: `Error fetching items: ${args.get_message()}`
+                        });
+                    }
+                );
+            } catch (error) {
+                console.error('[SP Field Creator] Exception getting items:', error);
+                sendResponse('SP_FIELD_CREATOR_PREVIEW_ITEMS_RESPONSE', {
+                    success: false,
+                    message: `Error: ${error.message}`
+                });
+            }
+        });
+    }
+
+    // Handle delete list
+    function handleDeleteListOperation(listTitle) {
+        ensureSPLoaded(function() {
+            try {
+                const context = SP.ClientContext.get_current();
+                const web = context.get_web();
+                const list = web.get_lists().getByTitle(listTitle);
+
+                list.deleteObject();
+
+                context.executeQueryAsync(
+                    function() {
+                        console.log('[SP Field Creator] List deleted successfully!');
+                        sendResponse('SP_FIELD_CREATOR_DELETE_LIST_RESPONSE', {
+                            success: true,
+                            message: `List deleted successfully`
+                        });
+                    },
+                    function(sender, args) {
+                        console.error('[SP Field Creator] Error deleting list:', args.get_message());
+                        sendResponse('SP_FIELD_CREATOR_DELETE_LIST_RESPONSE', {
+                            success: false,
+                            message: `Error deleting list: ${args.get_message()}`
+                        });
+                    }
+                );
+            } catch (error) {
+                console.error('[SP Field Creator] Exception deleting list:', error);
+                sendResponse('SP_FIELD_CREATOR_DELETE_LIST_RESPONSE', {
+                    success: false,
+                    message: `Error: ${error.message}`
+                });
+            }
+        });
+    }
+
+    // Handle delete items
+    function handleDeleteItemsOperation(listTitle, camlQuery, folderPath) {
+        ensureSPLoaded(function() {
+            try {
+                const context = SP.ClientContext.get_current();
+                const web = context.get_web();
+                const list = web.get_lists().getByTitle(listTitle);
+
+                const caml = new SP.CamlQuery();
+                caml.set_viewXml(camlQuery);
+
+                let items;
+                if (folderPath) {
+                    caml.set_folderServerRelativeUrl(folderPath);
+                    items = list.getItems(caml);
+                } else {
+                    items = list.getItems(caml);
+                }
+
+                context.load(items, 'Include(Id)');
+
+                context.executeQueryAsync(
+                    function() {
+                        console.log('[SP Field Creator] Got items, now deleting...');
+                        const itemArray = [];
+                        const enumerator = items.getEnumerator();
+                        while (enumerator.moveNext()) {
+                            const item = enumerator.get_current();
+                            itemArray.push(item.get_id());
+                        }
+
+                        // Delete items
+                        itemArray.forEach(id => {
+                            const item = list.getItemById(id);
+                            item.deleteObject();
+                        });
+
+                        context.executeQueryAsync(
+                            function() {
+                                console.log('[SP Field Creator] Items deleted successfully!');
+                                sendResponse('SP_FIELD_CREATOR_DELETE_ITEMS_RESPONSE', {
+                                    success: true,
+                                    deleted: itemArray.length,
+                                    message: `${itemArray.length} item(s) deleted`
+                                });
+                            },
+                            function(sender, args) {
+                                console.error('[SP Field Creator] Error deleting items:', args.get_message());
+                                sendResponse('SP_FIELD_CREATOR_DELETE_ITEMS_RESPONSE', {
+                                    success: false,
+                                    message: `Error deleting items: ${args.get_message()}`
+                                });
+                            }
+                        );
+                    },
+                    function(sender, args) {
+                        console.error('[SP Field Creator] Error getting items to delete:', args.get_message());
+                        sendResponse('SP_FIELD_CREATOR_DELETE_ITEMS_RESPONSE', {
+                            success: false,
+                            message: `Error getting items: ${args.get_message()}`
+                        });
+                    }
+                );
+            } catch (error) {
+                console.error('[SP Field Creator] Exception deleting items:', error);
+                sendResponse('SP_FIELD_CREATOR_DELETE_ITEMS_RESPONSE', {
+                    success: false,
+                    message: `Error: ${error.message}`
+                });
+            }
+        });
+    }
+
+    // Handle get list fields
+    function handleGetListFields(listTitle) {
+        ensureSPLoaded(function() {
+            try {
+                const context = SP.ClientContext.get_current();
+                const web = context.get_web();
+                const list = web.get_lists().getByTitle(listTitle);
+
+                const fields = list.get_fields();
+                context.load(fields, 'Include(Title,InternalName,FieldTypeKind,TypeAsString,ReadOnlyField,Hidden,Required)');
+
+                context.executeQueryAsync(
+                    function() {
+                        const fieldList = [];
+                        const fieldEnumerator = fields.getEnumerator();
+
+                        while (fieldEnumerator.moveNext()) {
+                            const field = fieldEnumerator.get_current();
+
+                            // Skip hidden system fields
+                            if (field.get_hidden() && !field.get_title()) {
+                                continue;
+                            }
+
+                            // Skip certain system fields
+                            const skipFields = ['ContentType', 'ContentTypeId', 'MetaInfo', 'ScopeId',
+                                '_Level', '_IsCurrentVersion', 'ItemChildCount', 'FolderChildCount'];
+                            if (skipFields.indexOf(field.get_internalName()) !== -1) {
+                                continue;
+                            }
+
+                            fieldList.push({
+                                title: field.get_title() || field.get_internalName(),
+                                internalName: field.get_internalName(),
+                                type: field.get_typeAsString() || 'Text',
+                                fieldTypeKind: field.get_fieldTypeKind(),
+                                readOnly: field.get_readOnlyField(),
+                                hidden: field.get_hidden(),
+                                required: field.get_required()
+                            });
+                        }
+
+                        // Sort by title
+                        fieldList.sort((a, b) => a.title.localeCompare(b.title));
+
+                        sendResponse('SP_FIELD_CREATOR_GET_LIST_FIELDS_RESPONSE', {
+                            success: true,
+                            fields: fieldList
+                        });
+                    },
+                    function(sender, args) {
+                        console.error('[SP Field Creator] Error getting list fields:', args.get_message());
+                        sendResponse('SP_FIELD_CREATOR_GET_LIST_FIELDS_RESPONSE', {
+                            success: false,
+                            message: `Error: ${args.get_message()}`
+                        });
+                    }
+                );
+            } catch (error) {
+                console.error('[SP Field Creator] Exception getting list fields:', error);
+                sendResponse('SP_FIELD_CREATOR_GET_LIST_FIELDS_RESPONSE', {
+                    success: false,
+                    message: `Error: ${error.message}`
+                });
+            }
+        });
+    }
+
+    // Handle filter list items
+    function handleFilterListItems(listTitle, camlQuery, rowLimit) {
+        ensureSPLoaded(function() {
+            try {
+                const context = SP.ClientContext.get_current();
+                const web = context.get_web();
+                const list = web.get_lists().getByTitle(listTitle);
+
+                // Parse CAML query
+                const camlQueryObj = new SP.CamlQuery();
+                camlQueryObj.set_viewXml(camlQuery);
+
+                const items = list.getItems(camlQueryObj);
+
+                // Get list fields first
+                const fields = list.get_fields();
+                context.load(fields);
+                context.load(items, 'Include(ID)');
+
+                context.executeQueryAsync(
+                    function() {
+                        // Get field names to load
+                        const fieldNames = ['ID', 'Title'];
+                        const fieldEnumerator = fields.getEnumerator();
+                        while (fieldEnumerator.moveNext()) {
+                            const field = fieldEnumerator.get_current();
+                            const internalName = field.get_internalName();
+                            // Skip certain system fields
+                            if (!internalName.startsWith('_') || internalName === '_ModerationStatus') {
+                                fieldNames.push(internalName);
+                            }
+                        }
+
+                        // Now load items with all fields
+                        const loadExpressions = ['Include(' + fieldNames.join(', ') + ')'];
+                        context.load(items, loadExpressions.join(''));
+
+                        context.executeQueryAsync(
+                            function() {
+                                const results = [];
+                                const itemEnumerator = items.getEnumerator();
+
+                                while (itemEnumerator.moveNext()) {
+                                    const item = itemEnumerator.get_current();
+                                    const itemData = {};
+
+                                    // Get values for each field
+                                    for (var i = 0; i < fieldNames.length; i++) {
+                                        var fieldName = fieldNames[i];
+                                        try {
+                                            var value = item.get_item(fieldName);
+
+                                            if (value === null) {
+                                                itemData[fieldName] = '';
+                                            } else if (typeof value === 'object') {
+                                                // Handle lookup fields
+                                                if (value.get_lookupValue) {
+                                                    itemData[fieldName] = value.get_lookupValue();
+                                                    itemData[fieldName + '_Id'] = value.get_lookupId();
+                                                }
+                                                // Handle user fields
+                                                else if (typeof value.get_title === 'function') {
+                                                    itemData[fieldName] = value.get_title();
+                                                }
+                                                // Handle Date fields
+                                                else if (value instanceof Date) {
+                                                    itemData[fieldName] = value.toLocaleString();
+                                                }
+                                                // Handle other objects
+                                                else {
+                                                    try {
+                                                        itemData[fieldName] = JSON.stringify(value);
+                                                    } catch (e) {
+                                                        itemData[fieldName] = '[Object]';
+                                                    }
+                                                }
+                                            } else {
+                                                itemData[fieldName] = String(value);
+                                            }
+                                        } catch (e) {
+                                            // Field doesn't exist or can't be accessed
+                                            itemData[fieldName] = '';
+                                        }
+                                    }
+
+                                    results.push(itemData);
+                                }
+
+                                sendResponse('SP_FIELD_CREATOR_FILTER_ITEMS_RESPONSE', {
+                                    success: true,
+                                    results: results
+                                });
+                            },
+                            function(sender, args) {
+                                console.error('[SP Field Creator] Error loading item field values:', args.get_message());
+                                sendResponse('SP_FIELD_CREATOR_FILTER_ITEMS_RESPONSE', {
+                                    success: false,
+                                    message: `Error loading field values: ${args.get_message()}`
+                                });
+                            }
+                        );
+                    },
+                    function(sender, args) {
+                        console.error('[SP Field Creator] Error filtering items:', args.get_message());
+                        sendResponse('SP_FIELD_CREATOR_FILTER_ITEMS_RESPONSE', {
+                            success: false,
+                            message: `Error: ${args.get_message()}`
+                        });
+                    }
+                );
+            } catch (error) {
+                console.error('[SP Field Creator] Exception filtering items:', error);
+                sendResponse('SP_FIELD_CREATOR_FILTER_ITEMS_RESPONSE', {
                     success: false,
                     message: `Error: ${error.message}`
                 });

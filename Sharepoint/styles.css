@@ -148,6 +148,95 @@ header h1 {
     word-break: break-all;
 }
 
+/* List Deleter Content */
+.list-deleter-content {
+    padding: 20px;
+}
+
+.sp-deleter-group {
+    margin-bottom: 15px;
+}
+
+.sp-deleter-label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: #333;
+    font-size: 13px;
+}
+
+.sp-deleter-input,
+.sp-deleter-textarea,
+.sp-deleter-select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    box-sizing: border-box;
+    font-size: 13px;
+}
+
+.sp-deleter-textarea {
+    min-height: 120px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    resize: vertical;
+    white-space: pre;
+    overflow-x: auto;
+}
+
+.sp-deleter-textarea:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.sp-deleter-row {
+    display: flex;
+    gap: 10px;
+}
+
+.sp-deleter-row .sp-deleter-group {
+    flex: 1;
+}
+
+.sp-deleter-checkbox-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sp-deleter-checkbox {
+    width: auto;
+}
+
+.sp-deleter-output {
+    margin-top: 15px;
+    padding: 10px;
+    background: #f5f5f5;
+    border-radius: 4px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-size: 12px;
+    font-family: 'Consolas', 'Monaco', monospace;
+}
+
+.sp-deleter-output-success {
+    background: #dff6dd;
+    border: 1px solid #b7d4b4;
+    color: #107c10;
+}
+
+.sp-deleter-output-error {
+    background: #fde7e9;
+    border: 1px solid #f8c8c9;
+    color: #d13438;
+}
+
+.sp-deleter-output-info {
+    background: #fff4ce;
+    border: 1px solid #fce100;
+    color: #797775;
+}
+
 /* Status Section */
 .status-section {
     margin-bottom: 15px;
@@ -302,6 +391,24 @@ header h1 {
 
 .btn-secondary:hover {
     background: #626262;
+}
+
+.btn-danger {
+    background: #d13438;
+    color: white;
+}
+
+.btn-danger:hover:not(:disabled) {
+    background: #a80000;
+}
+
+.btn-info {
+    background: #0078d4;
+    color: white;
+}
+
+.btn-info:hover:not(:disabled) {
+    background: #005a9e;
 }
 
 .button-row {

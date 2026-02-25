@@ -23,6 +23,26 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true; // Keep message channel open for async response
     }
 
+    if (request.action === 'getAllLists') {
+        handleGetAllLists(request, sendResponse);
+        return true; // Keep message channel open for async response
+    }
+
+    if (request.action === 'previewListDeleterItems') {
+        handlePreviewListDeleterItems(request, sendResponse);
+        return true; // Keep message channel open for async response
+    }
+
+    if (request.action === 'deleteList') {
+        handleDeleteList(request, sendResponse);
+        return true; // Keep message channel open for async response
+    }
+
+    if (request.action === 'deleteListItems') {
+        handleDeleteListItems(request, sendResponse);
+        return true; // Keep message channel open for async response
+    }
+
     if (request.action === 'ping') {
         sendResponse({ success: true, message: 'Content script is ready' });
         return true;
@@ -41,6 +61,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
         sendResponse({ success: true, message: `Checked ${checkedCount} checkboxes` });
         return true;
+    }
+
+    if (request.action === 'getListFields') {
+        handleGetListFields(request, sendResponse);
+        return true; // Keep message channel open for async response
+    }
+
+    if (request.action === 'filterListItems') {
+        handleFilterListItems(request, sendResponse);
+        return true; // Keep message channel open for async response
     }
 
     if (request.action === 'uncheckAllCheckboxes') {
@@ -133,5 +163,128 @@ function handleCreateList(request, sendResponse) {
     }, '*');
 }
 
+// Handle get all lists
+function handleGetAllLists(request, sendResponse) {
+    // Listen for response from page context FIRST
+    const messageHandler = (event) => {
+        if (event.data.type === 'SP_FIELD_CREATOR_GET_ALL_LISTS_RESPONSE') {
+            window.removeEventListener('message', messageHandler);
+            sendResponse(event.data.response);
+        }
+    };
+    window.addEventListener('message', messageHandler);
+
+    // Send message to page context script AFTER listener is attached
+    window.postMessage({
+        type: 'SP_FIELD_CREATOR_GET_ALL_LISTS'
+    }, '*');
+}
+
+// Handle preview list deleter items
+function handlePreviewListDeleterItems(request, sendResponse) {
+    const { listTitle, camlQuery, folderPath } = request;
+
+    // Listen for response from page context FIRST
+    const messageHandler = (event) => {
+        if (event.data.type === 'SP_FIELD_CREATOR_PREVIEW_ITEMS_RESPONSE') {
+            window.removeEventListener('message', messageHandler);
+            sendResponse(event.data.response);
+        }
+    };
+    window.addEventListener('message', messageHandler);
+
+    // Send message to page context script AFTER listener is attached
+    window.postMessage({
+        type: 'SP_FIELD_CREATOR_PREVIEW_ITEMS',
+        listTitle: listTitle,
+        camlQuery: camlQuery,
+        folderPath: folderPath
+    }, '*');
+}
+
+// Handle delete list
+function handleDeleteList(request, sendResponse) {
+    const { listTitle } = request;
+
+    // Listen for response from page context FIRST
+    const messageHandler = (event) => {
+        if (event.data.type === 'SP_FIELD_CREATOR_DELETE_LIST_RESPONSE') {
+            window.removeEventListener('message', messageHandler);
+            sendResponse(event.data.response);
+        }
+    };
+    window.addEventListener('message', messageHandler);
+
+    // Send message to page context script AFTER listener is attached
+    window.postMessage({
+        type: 'SP_FIELD_CREATOR_DELETE_LIST',
+        listTitle: listTitle
+    }, '*');
+}
+
+// Handle delete list items
+function handleDeleteListItems(request, sendResponse) {
+    const { listTitle, camlQuery, folderPath } = request;
+
+    // Listen for response from page context FIRST
+    const messageHandler = (event) => {
+        if (event.data.type === 'SP_FIELD_CREATOR_DELETE_ITEMS_RESPONSE') {
+            window.removeEventListener('message', messageHandler);
+            sendResponse(event.data.response);
+        }
+    };
+    window.addEventListener('message', messageHandler);
+
+    // Send message to page context script AFTER listener is attached
+    window.postMessage({
+        type: 'SP_FIELD_CREATOR_DELETE_ITEMS',
+        listTitle: listTitle,
+        camlQuery: camlQuery,
+        folderPath: folderPath
+    }, '*');
+}
+
 // Log that content script is loaded
 console.log('SharePoint Field Creator - Content Script Loaded');
+
+// Handle get list fields
+function handleGetListFields(request, sendResponse) {
+    const { listTitle } = request;
+
+    // Listen for response from page context FIRST
+    const messageHandler = (event) => {
+        if (event.data.type === 'SP_FIELD_CREATOR_GET_LIST_FIELDS_RESPONSE') {
+            window.removeEventListener('message', messageHandler);
+            sendResponse(event.data.response);
+        }
+    };
+    window.addEventListener('message', messageHandler);
+
+    // Send message to page context script AFTER listener is attached
+    window.postMessage({
+        type: 'SP_FIELD_CREATOR_GET_LIST_FIELDS',
+        listTitle: listTitle
+    }, '*');
+}
+
+// Handle filter list items
+function handleFilterListItems(request, sendResponse) {
+    const { listTitle, camlQuery, rowLimit } = request;
+
+    // Listen for response from page context FIRST
+    const messageHandler = (event) => {
+        if (event.data.type === 'SP_FIELD_CREATOR_FILTER_ITEMS_RESPONSE') {
+            window.removeEventListener('message', messageHandler);
+            sendResponse(event.data.response);
+        }
+    };
+    window.addEventListener('message', messageHandler);
+
+    // Send message to page context script AFTER listener is attached
+    window.postMessage({
+        type: 'SP_FIELD_CREATOR_FILTER_ITEMS',
+        listTitle: listTitle,
+        camlQuery: camlQuery,
+        rowLimit: rowLimit
+    }, '*');
+}

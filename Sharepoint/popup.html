@@ -20,6 +20,8 @@
                 <button id="openFormBtn" class="btn btn-primary btn-large">SharePoint Field Creator</button>
                 <button id="checkUncheckBtn" class="btn btn-secondary btn-large">Check and uncheck</button>
                 <button id="listCountBtn" class="btn btn-primary btn-large">List Count Aggregator</button>
+                <button id="listDeleterBtn" class="btn btn-danger btn-large">List Deleter</button>
+                <button id="listFilterBtn" class="btn btn-info btn-large">List Filter</button>
             </div>
         </div>
 
@@ -158,6 +160,248 @@
                 </div>
                 <div id="listCountResult" class="list-count-result hidden">
                     <div id="listCountContent"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- List Deleter View (hidden by default) -->
+        <div id="listDeleterView" class="main-content hidden">
+            <header>
+                <h1>List Deleter</h1>
+                <p class="subtitle">Delete SharePoint lists or items with CAML filtering</p>
+                <button id="backToWelcomeFromListDeleterBtn" class="btn-back">← Back</button>
+            </header>
+            <div class="list-deleter-content">
+                <div class="sp-deleter-group">
+                    <label class="sp-deleter-label">List Type</label>
+                    <select id="sp-list-type" class="sp-deleter-select">
+                        <option value="normal">Normal List</option>
+                        <option value="workflow">Workflow List (WorkflowTasks)</option>
+                    </select>
+                    <div id="sp-workflow-url-info" style="display:none;margin-top:5px;padding:8px;background:#e6f2ff;border-radius:4px;font-size:12px;color:#0056b3;">
+                        📍 Using Workflow URL: <span id="sp-workflow-url-display"></span>
+                    </div>
+                </div>
+
+                <div class="sp-deleter-group">
+                    <label class="sp-deleter-label">
+                        <span style="display:flex;justify-content:space-between;align-items:center;">
+                            <span>List Name / Title</span>
+                            <button type="button" id="sp-get-lists" class="btn" style="width:auto;padding:4px 12px;font-size:12px;background:#107c10;color:white;margin:0;">📋 Get All Lists</button>
+                        </span>
+                    </label>
+                    <input type="text" id="sp-list-name" class="sp-deleter-input" placeholder="Enter list name (e.g., 'Tasks') manually if Get All Lists doesn't work">
+                    <select id="sp-list-dropdown" class="sp-deleter-select" style="display:none;margin-top:5px;">
+                        <option value="">-- Select a list --</option>
+                    </select>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="sp-deleter-group" style="background:#f0f6fc;padding:10px;border-radius:4px;border:1px dashed #0078d4;">
+                    <label class="sp-deleter-label" style="color:#0078d4;">⚡ Quick Actions - WorkflowTasks</label>
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                        <button type="button" id="sp-wf-all" class="btn" style="flex:1;min-width:100px;background:#0078d4;color:white;">All Tasks</button>
+                        <button type="button" id="sp-wf-completed" class="btn" style="flex:1;min-width:100px;background:#107c10;color:white;">Completed</button>
+                        <button type="button" id="sp-wf-pending" class="btn" style="flex:1;min-width:100px;background:#d13438;color:white;">Pending</button>
+                        <button type="button" id="sp-wf-cancelled" class="btn" style="flex:1;min-width:100px;background:#666;color:white;">Cancelled</button>
+                    </div>
+                </div>
+
+                <div class="sp-deleter-group">
+                    <label class="sp-deleter-label">Operation Mode</label>
+                    <select id="sp-operation-mode" class="sp-deleter-select">
+                        <option value="deleteList">Delete Entire List</option>
+                        <option value="deleteItems">Delete Items (with CAML filter)</option>
+                        <option value="preview">Preview Items Only (No deletion)</option>
+                    </select>
+                </div>
+
+                <div class="sp-deleter-group">
+                    <label class="sp-deleter-label">
+                        <span style="display:flex;justify-content:space-between;align-items:center;">
+                            <span>CAML Query Builder</span>
+                            <button type="button" id="sp-toggle-builder" class="btn" style="width:auto;padding:4px 12px;font-size:12px;background:#0078d4;color:white;margin:0;">Show Builder</button>
+                        </span>
+                    </label>
+                    <div id="sp-caml-builder" style="display:none;padding:12px;background:#f9f9f9;border-radius:4px;margin-bottom:10px;">
+                        <div style="display:flex;gap:8px;margin-bottom:8px;">
+                            <select id="sp-builder-field" class="sp-deleter-select" style="flex:1;">
+                                <option value="">Select Field...</option>
+                                <option value="Title">Title</option>
+                                <option value="Status">Status</option>
+                                <option value="ID">ID</option>
+                                <option value="Created">Created</option>
+                                <option value="Modified">Modified</option>
+                                <option value="Author">Author</option>
+                                <option value="Editor">Editor</option>
+                                <option value="FileRef">FileRef</option>
+                            </select>
+                            <select id="sp-builder-operator" class="sp-deleter-select" style="flex:1;">
+                                <option value="Eq">Equals (=)</option>
+                                <option value="Neq">Not Equals (!=)</option>
+                                <option value="Contains">Contains</option>
+                                <option value="BeginsWith">Begins With</option>
+                                <option value="Lt">Less Than (&lt;)</option>
+                                <option value="Le">Less Than Equal (&lt;=)</option>
+                                <option value="Gt">Greater Than (&gt;)</option>
+                                <option value="Ge">Greater Than Equal (&gt;=)</option>
+                                <option value="IsNull">Is Null</option>
+                                <option value="IsNotNull">Is Not Null</option>
+                            </select>
+                        </div>
+                        <div style="display:flex;gap:8px;margin-bottom:8px;">
+                            <select id="sp-builder-type" class="sp-deleter-select" style="flex:1;">
+                                <option value="Text">Text</option>
+                                <option value="Number">Number</option>
+                                <option value="DateTime">DateTime</option>
+                                <option value="Integer">Integer</option>
+                                <option value="Counter">Counter</option>
+                                <option value="Boolean">Boolean</option>
+                                <option value="User">User</option>
+                            </select>
+                            <input type="text" id="sp-builder-value" class="sp-deleter-input" placeholder="Enter value..." style="flex:1;">
+                        </div>
+                        <button type="button" id="sp-build-caml" class="btn btn-primary">Generate Query</button>
+                    </div>
+                    <textarea id="sp-caml-query" class="sp-deleter-textarea" placeholder="Enter CAML query or use builder above...
+
+Example:
+&lt;View&gt;
+  &lt;Query&gt;
+    &lt;Where&gt;
+      &lt;Eq&gt;
+        &lt;FieldRef Name='Status'/&gt;
+        &lt;Value Type='Text'&gt;Completed&lt;/Value&gt;
+      &lt;/Eq&gt;
+    &lt;/Where&gt;
+  &lt;/Query&gt;
+&lt;/View&gt;"></textarea>
+                </div>
+
+                <div class="sp-deleter-row">
+                    <div class="sp-deleter-group">
+                        <label class="sp-deleter-label">Row Limit</label>
+                        <input type="number" id="sp-row-limit" class="sp-deleter-input" value="100" min="1">
+                    </div>
+                    <div class="sp-deleter-group">
+                        <label class="sp-deleter-label">Folder Path (Optional)</label>
+                        <input type="text" id="sp-folder-path" class="sp-deleter-input" placeholder="/sites/site/Lists/MyList/Folder">
+                    </div>
+                </div>
+
+                <div class="sp-deleter-group">
+                    <label class="sp-deleter-checkbox-group">
+                        <input type="checkbox" id="sp-confirm-delete" class="sp-deleter-checkbox">
+                        <span>I confirm I want to perform this action</span>
+                    </label>
+                </div>
+
+                <button id="sp-execute-btn" class="btn btn-danger">Execute</button>
+                <button id="sp-preview-btn" class="btn btn-secondary" style="margin-top: 8px;">Preview Matching Items</button>
+
+                <div id="sp-output" class="sp-deleter-output" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- List Filter View (hidden by default) -->
+        <div id="listFilterView" class="main-content hidden">
+            <header>
+                <h1>List Filter</h1>
+                <p class="subtitle">Filter SharePoint list by column and value</p>
+                <button id="backToWelcomeFromListFilterBtn" class="btn-back">← Back</button>
+            </header>
+            <div class="list-filter-content">
+                <!-- List Selection -->
+                <div class="sp-deleter-group">
+                    <label class="sp-deleter-label">
+                        <span style="display:flex;justify-content:space-between;align-items:center;">
+                            <span>Select List</span>
+                            <button type="button" id="lf-get-lists" class="btn" style="width:auto;padding:4px 12px;font-size:12px;background:#0078d4;color:white;margin:0;">📋 Get All Lists</button>
+                        </span>
+                    </label>
+                    <select id="lf-list-dropdown" class="sp-deleter-select">
+                        <option value="">-- Select a list --</option>
+                    </select>
+                </div>
+
+                <!-- Column Selection -->
+                <div class="sp-deleter-group">
+                    <label class="sp-deleter-label">
+                        <span style="display:flex;justify-content:space-between;align-items:center;">
+                            <span>Select Column</span>
+                            <button type="button" id="lf-get-columns" class="btn" style="width:auto;padding:4px 12px;font-size:12px;background:#0078d4;color:white;margin:0;">📋 Get Columns</button>
+                        </span>
+                    </label>
+                    <select id="lf-column-dropdown" class="sp-deleter-select" disabled>
+                        <option value="">-- Select a list first --</option>
+                    </select>
+                </div>
+
+                <!-- Column Type Display -->
+                <div class="sp-deleter-group" id="lf-column-type-group" style="display:none;">
+                    <label class="sp-deleter-label">Column Type</label>
+                    <input type="text" id="lf-column-type" class="sp-deleter-input" readonly style="background:#f5f5f5;">
+                </div>
+
+                <!-- Filter Value Input -->
+                <div class="sp-deleter-group">
+                    <label class="sp-deleter-label">Filter Operator</label>
+                    <select id="lf-operator" class="sp-deleter-select">
+                        <option value="Eq">Equals (=)</option>
+                        <option value="Neq">Not Equals (!=)</option>
+                        <option value="Contains">Contains</option>
+                        <option value="BeginsWith">Begins With</option>
+                        <option value="Lt">Less Than (&lt;)</option>
+                        <option value="Le">Less Than Equal (&lt;=)</option>
+                        <option value="Gt">Greater Than (&gt;)</option>
+                        <option value="Ge">Greater Than Equal (&gt;=)</option>
+                        <option value="IsNull">Is Null</option>
+                        <option value="IsNotNull">Is Not Null</option>
+                        <option value="In">In (comma-separated values)</option>
+                    </select>
+                </div>
+
+                <div class="sp-deleter-group">
+                    <label class="sp-deleter-label">Filter Value</label>
+                    <input type="text" id="lf-value" class="sp-deleter-input" placeholder="Enter value to filter by...">
+                    <small class="help-text">For 'In' operator, use comma-separated values (e.g., Value1,Value2,Value3)</small>
+                </div>
+
+                <!-- Additional Filters -->
+                <div class="sp-deleter-group">
+                    <label class="sp-deleter-label">
+                        <span style="display:flex;justify-content:space-between;align-items:center;">
+                            <span>Additional Filters</span>
+                            <button type="button" id="lf-add-filter" class="btn" style="width:auto;padding:4px 12px;font-size:12px;background:#107c10;color:white;margin:0;">+ Add Filter</button>
+                        </span>
+                    </label>
+                    <div id="lf-additional-filters" style="border:1px dashed #ccc;padding:10px;border-radius:4px;">
+                        <p style="color:#888;font-style:italic;font-size:12px;">No additional filters. Click "+ Add Filter" to add more conditions.</p>
+                    </div>
+                </div>
+
+                <!-- Row Limit -->
+                <div class="sp-deleter-group">
+                    <label class="sp-deleter-label">Row Limit (0 for unlimited)</label>
+                    <input type="number" id="lf-row-limit" class="sp-deleter-input" value="100" min="0">
+                </div>
+
+                <!-- Actions -->
+                <div class="sp-deleter-group">
+                    <button id="lf-apply-filter" class="btn btn-primary">Apply Filter</button>
+                    <button id="lf-clear-filter" class="btn btn-secondary">Clear Filter</button>
+                </div>
+
+                <!-- Results -->
+                <div id="lf-results-section" class="sp-deleter-output" style="display:none;">
+                    <h3>Filter Results</h3>
+                    <div id="lf-results-count" class="preview-count"></div>
+                    <div class="table-container">
+                        <table id="lf-results-table">
+                            <thead id="lf-results-thead"></thead>
+                            <tbody id="lf-results-tbody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>

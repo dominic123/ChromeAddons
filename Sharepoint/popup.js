@@ -2,6 +2,7 @@
 let csvData = [];
 let isConnected = false;
 let currentTabId = null;
+let filterAdditionalConditions = [];
 
 // DOM Elements
 const elements = {
@@ -9,12 +10,36 @@ const elements = {
     mainForm: document.getElementById('mainForm'),
     checkUncheckView: document.getElementById('checkUncheckView'),
     listCountView: document.getElementById('listCountView'),
+    listDeleterView: document.getElementById('listDeleterView'),
+    listFilterView: document.getElementById('listFilterView'),
     openFormBtn: document.getElementById('openFormBtn'),
     checkUncheckBtn: document.getElementById('checkUncheckBtn'),
     listCountBtn: document.getElementById('listCountBtn'),
+    listDeleterBtn: document.getElementById('listDeleterBtn'),
+    listFilterBtn: document.getElementById('listFilterBtn'),
     backBtn: document.getElementById('backBtn'),
     backToWelcomeBtn: document.getElementById('backToWelcomeBtn'),
     backToWelcomeFromListCountBtn: document.getElementById('backToWelcomeFromListCountBtn'),
+    backToWelcomeFromListDeleterBtn: document.getElementById('backToWelcomeFromListDeleterBtn'),
+    backToWelcomeFromListFilterBtn: document.getElementById('backToWelcomeFromListFilterBtn'),
+    // List Filter elements
+    lfGetLists: document.getElementById('lf-get-lists'),
+    lfListDropdown: document.getElementById('lf-list-dropdown'),
+    lfGetColumns: document.getElementById('lf-get-columns'),
+    lfColumnDropdown: document.getElementById('lf-column-dropdown'),
+    lfColumnTypeGroup: document.getElementById('lf-column-type-group'),
+    lfColumnType: document.getElementById('lf-column-type'),
+    lfOperator: document.getElementById('lf-operator'),
+    lfValue: document.getElementById('lf-value'),
+    lfAddFilter: document.getElementById('lf-add-filter'),
+    lfAdditionalFilters: document.getElementById('lf-additional-filters'),
+    lfRowLimit: document.getElementById('lf-row-limit'),
+    lfApplyFilter: document.getElementById('lf-apply-filter'),
+    lfClearFilter: document.getElementById('lf-clear-filter'),
+    lfResultsSection: document.getElementById('lf-results-section'),
+    lfResultsCount: document.getElementById('lf-results-count'),
+    lfResultsThead: document.getElementById('lf-results-thead'),
+    lfResultsTbody: document.getElementById('lf-results-tbody'),
     checkAllBtn: document.getElementById('checkAllBtn'),
     uncheckAllBtn: document.getElementById('uncheckAllBtn'),
     checkboxResult: document.getElementById('checkboxResult'),
@@ -22,6 +47,31 @@ const elements = {
     runListCountBtn: document.getElementById('runListCountBtn'),
     listCountResult: document.getElementById('listCountResult'),
     listCountContent: document.getElementById('listCountContent'),
+    spListType: document.getElementById('sp-list-type'),
+    spWorkflowUrlInfo: document.getElementById('sp-workflow-url-info'),
+    spWorkflowUrlDisplay: document.getElementById('sp-workflow-url-display'),
+    spGetLists: document.getElementById('sp-get-lists'),
+    spListName: document.getElementById('sp-list-name'),
+    spListDropdown: document.getElementById('sp-list-dropdown'),
+    spWfAll: document.getElementById('sp-wf-all'),
+    spWfCompleted: document.getElementById('sp-wf-completed'),
+    spWfPending: document.getElementById('sp-wf-pending'),
+    spWfCancelled: document.getElementById('sp-wf-cancelled'),
+    spOperationMode: document.getElementById('sp-operation-mode'),
+    spToggleBuilder: document.getElementById('sp-toggle-builder'),
+    spCamlBuilder: document.getElementById('sp-caml-builder'),
+    spBuilderField: document.getElementById('sp-builder-field'),
+    spBuilderOperator: document.getElementById('sp-builder-operator'),
+    spBuilderType: document.getElementById('sp-builder-type'),
+    spBuilderValue: document.getElementById('sp-builder-value'),
+    spBuildCaml: document.getElementById('sp-build-caml'),
+    spCamlQuery: document.getElementById('sp-caml-query'),
+    spRowLimit: document.getElementById('sp-row-limit'),
+    spFolderPath: document.getElementById('sp-folder-path'),
+    spConfirmDelete: document.getElementById('sp-confirm-delete'),
+    spExecuteBtn: document.getElementById('sp-execute-btn'),
+    spPreviewBtn: document.getElementById('sp-preview-btn'),
+    spOutput: document.getElementById('sp-output'),
     connectionStatus: document.getElementById('connectionStatus'),
     siteUrl: document.getElementById('siteUrl'),
     listName: document.getElementById('listName'),
@@ -123,6 +173,100 @@ function setupEventListeners() {
     // Run List Count button
     if (elements.runListCountBtn) {
         elements.runListCountBtn.addEventListener('click', runListCountAggregation);
+    }
+
+    // List Deleter button
+    if (elements.listDeleterBtn) {
+        elements.listDeleterBtn.addEventListener('click', openListDeleterView);
+    }
+
+    // Back to Welcome button (from List Deleter view)
+    if (elements.backToWelcomeFromListDeleterBtn) {
+        elements.backToWelcomeFromListDeleterBtn.addEventListener('click', closeListDeleterView);
+    }
+
+    // List Type selection
+    if (elements.spListType) {
+        elements.spListType.addEventListener('change', handleListTypeChange);
+    }
+
+    // Get All Lists button
+    if (elements.spGetLists) {
+        elements.spGetLists.addEventListener('click', getAllLists);
+    }
+
+    // WorkflowTasks Quick Actions
+    if (elements.spWfAll) {
+        elements.spWfAll.addEventListener('click', () => setupWorkflowTaskList('deleteItems', 'all'));
+    }
+    if (elements.spWfCompleted) {
+        elements.spWfCompleted.addEventListener('click', () => setupWorkflowTaskList('deleteItems', 'completed'));
+    }
+    if (elements.spWfPending) {
+        elements.spWfPending.addEventListener('click', () => setupWorkflowTaskList('deleteItems', 'pending'));
+    }
+    if (elements.spWfCancelled) {
+        elements.spWfCancelled.addEventListener('click', () => setupWorkflowTaskList('deleteItems', 'cancelled'));
+    }
+
+    // Operation Mode change
+    if (elements.spOperationMode) {
+        elements.spOperationMode.addEventListener('change', handleOperationModeChange);
+    }
+
+    // CAML Builder toggle
+    if (elements.spToggleBuilder) {
+        elements.spToggleBuilder.addEventListener('click', toggleCamlBuilder);
+    }
+
+    // Generate CAML from builder
+    if (elements.spBuildCaml) {
+        elements.spBuildCaml.addEventListener('click', buildCamlQuery);
+    }
+
+    // Execute button
+    if (elements.spExecuteBtn) {
+        elements.spExecuteBtn.addEventListener('click', executeListDeleterOperation);
+    }
+
+    // Preview button
+    if (elements.spPreviewBtn) {
+        elements.spPreviewBtn.addEventListener('click', previewListDeleterItems);
+    }
+
+    // List Filter button
+    if (elements.listFilterBtn) {
+        elements.listFilterBtn.addEventListener('click', openListFilterView);
+    }
+
+    // Back to Welcome button (from List Filter view)
+    if (elements.backToWelcomeFromListFilterBtn) {
+        elements.backToWelcomeFromListFilterBtn.addEventListener('click', closeListFilterView);
+    }
+
+    // List Filter - Get Lists
+    if (elements.lfGetLists) {
+        elements.lfGetLists.addEventListener('click', handleLfGetLists);
+    }
+
+    // List Filter - Get Columns
+    if (elements.lfGetColumns) {
+        elements.lfGetColumns.addEventListener('click', handleLfGetColumns);
+    }
+
+    // List Filter - Add Additional Filter
+    if (elements.lfAddFilter) {
+        elements.lfAddFilter.addEventListener('click', addAdditionalFilter);
+    }
+
+    // List Filter - Apply Filter
+    if (elements.lfApplyFilter) {
+        elements.lfApplyFilter.addEventListener('click', applyListFilter);
+    }
+
+    // List Filter - Clear Filter
+    if (elements.lfClearFilter) {
+        elements.lfClearFilter.addEventListener('click', clearListFilter);
     }
 
     // Connect button
@@ -722,6 +866,34 @@ function closeListCountView() {
     }
 }
 
+function openListDeleterView() {
+    if (elements.welcomeScreen && elements.listDeleterView) {
+        elements.welcomeScreen.classList.add('hidden');
+        elements.listDeleterView.classList.remove('hidden');
+    }
+}
+
+function closeListDeleterView() {
+    if (elements.welcomeScreen && elements.listDeleterView) {
+        elements.listDeleterView.classList.add('hidden');
+        elements.welcomeScreen.classList.remove('hidden');
+    }
+}
+
+function openListFilterView() {
+    if (elements.welcomeScreen && elements.listFilterView) {
+        elements.welcomeScreen.classList.add('hidden');
+        elements.listFilterView.classList.remove('hidden');
+    }
+}
+
+function closeListFilterView() {
+    if (elements.welcomeScreen && elements.listFilterView) {
+        elements.listFilterView.classList.add('hidden');
+        elements.welcomeScreen.classList.remove('hidden');
+    }
+}
+
 // Checkbox Functions
 async function checkAllCheckboxes() {
     try {
@@ -1078,4 +1250,704 @@ function showListCountSuccess(html, totalSites) {
             ${html}
         `;
     }
+}
+
+// List Deleter Functions
+function showDeleterOutput(message, type = 'info') {
+    if (elements.spOutput) {
+        elements.spOutput.style.display = 'block';
+        elements.spOutput.className = 'sp-deleter-output sp-deleter-output-' + type;
+        elements.spOutput.textContent = message;
+    }
+}
+
+function handleListTypeChange(e) {
+    if (e.target.value === 'workflow') {
+        elements.spListName.value = 'WorkflowTasks';
+        const workflowUrl = 'WorkflowTasks';
+        elements.spWorkflowUrlDisplay.textContent = workflowUrl;
+        elements.spWorkflowUrlInfo.style.display = 'block';
+        showDeleterOutput('Workflow List selected. Using /WorkflowTasks list.', 'info');
+    } else {
+        elements.spListName.value = '';
+        elements.spWorkflowUrlInfo.style.display = 'none';
+    }
+}
+
+async function getAllLists() {
+    try {
+        showDeleterOutput('Fetching all lists from site...', 'info');
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tabs[0]) {
+            showDeleterOutput('No active tab found', 'error');
+            return;
+        }
+
+        // Check if on SharePoint page
+        const currentUrl = tabs[0].url;
+        const isSharePointPage = currentUrl.includes('/sites/') ||
+                                currentUrl.includes('/Lists/') ||
+                                currentUrl.includes('/_layouts/') ||
+                                currentUrl.includes('.aspx');
+
+        if (!isSharePointPage) {
+            showDeleterOutput('❌ Not on a SharePoint page.\n\nPlease navigate to a SharePoint site first (e.g., /sites/yoursite or a list page).', 'error');
+            return;
+        }
+
+        showDeleterOutput('Verifying content script is loaded...', 'info');
+
+        // First verify content script is loaded
+        try {
+            await sendMessageToContentScript({
+                action: 'ping'
+            });
+        } catch (pingError) {
+            showDeleterOutput('❌ Content script not available.\n\nPlease refresh the SharePoint page and try again.', 'error');
+            console.error('Content script ping error:', pingError);
+            return;
+        }
+
+        showDeleterOutput('Fetching lists using SharePoint JSOM...', 'info');
+
+        // Send message to content script
+        const response = await sendMessageToContentScript({
+            action: 'getAllLists'
+        });
+
+        if (response && response.success) {
+            const lists = response.lists;
+            elements.spListDropdown.innerHTML = '<option value="">-- Select a list --</option>';
+            lists.forEach(list => {
+                const option = document.createElement('option');
+                option.value = list.title;
+                option.textContent = `${list.title} (${list.itemCount} items)`;
+                elements.spListDropdown.appendChild(option);
+            });
+
+            elements.spListDropdown.style.display = 'block';
+            showDeleterOutput(`✓ Found ${lists.length} list(s). Select from dropdown.`, 'success');
+
+            // Handle dropdown selection
+            elements.spListDropdown.onchange = () => {
+                elements.spListName.value = elements.spListDropdown.value;
+            };
+        } else {
+            showDeleterOutput(`❌ Error: ${response?.message || 'Failed to fetch lists'}`, 'error');
+        }
+    } catch (error) {
+        console.error('getAllLists error:', error);
+        const errorMsg = error.message.includes('Receiving end does not exist') 
+            ? '❌ Content script not loaded.\n\nPlease refresh the SharePoint page (F5) and try again.' 
+            : `❌ Error: ${error.message}`;
+        showDeleterOutput(errorMsg, 'error');
+    }
+}
+
+function setupWorkflowTaskList(mode = 'deleteItems', filterType = 'all') {
+    elements.spListName.value = 'WorkflowTasks';
+    elements.spOperationMode.value = mode;
+
+    let camlQuery = '';
+    switch(filterType) {
+        case 'completed':
+            camlQuery = `<View>
+  <Query>
+    <Where>
+      <Eq>
+        <FieldRef Name='Status'/>
+        <Value Type='Text'>Completed</Value>
+      </Eq>
+    </Where>
+  </Query>
+</View>`;
+            break;
+        case 'pending':
+            camlQuery = `<View>
+  <Query>
+    <Where>
+      <Neq>
+        <FieldRef Name='Status'/>
+        <Value Type='Text'>Completed</Value>
+      </Neq>
+    </Where>
+  </Query>
+</View>`;
+            break;
+        case 'cancelled':
+            camlQuery = `<View>
+  <Query>
+    <Where>
+      <Eq>
+        <FieldRef Name='Status'/>
+        <Value Type='Text'>Cancelled</Value>
+      </Eq>
+    </Where>
+  </Query>
+</View>`;
+            break;
+        default:
+            camlQuery = `<View></View>`;
+    }
+    elements.spCamlQuery.value = camlQuery;
+
+    // Trigger change event to update button text
+    elements.spOperationMode.dispatchEvent(new Event('change'));
+
+    showDeleterOutput(`Setup: WorkflowTasks - ${filterType.charAt(0).toUpperCase() + filterType.slice(1)} filter applied. Check checkbox and click Execute.`, 'info');
+}
+
+function handleOperationModeChange(e) {
+    const btn = elements.spExecuteBtn;
+    if (e.target.value === 'deleteList') {
+        btn.textContent = 'Delete Entire List';
+        btn.className = 'btn btn-danger';
+    } else if (e.target.value === 'deleteItems') {
+        btn.textContent = 'Delete Filtered Items';
+        btn.className = 'btn btn-danger';
+    } else {
+        btn.textContent = 'Preview Only';
+        btn.className = 'btn btn-secondary';
+    }
+}
+
+function toggleCamlBuilder() {
+    if (elements.spCamlBuilder.style.display === 'none') {
+        elements.spCamlBuilder.style.display = 'block';
+        elements.spToggleBuilder.textContent = 'Hide Builder';
+    } else {
+        elements.spCamlBuilder.style.display = 'none';
+        elements.spToggleBuilder.textContent = 'Show Builder';
+    }
+}
+
+function buildCamlQuery() {
+    const field = elements.spBuilderField.value;
+    const operator = elements.spBuilderOperator.value;
+    const valueType = elements.spBuilderType.value;
+    const value = elements.spBuilderValue.value.trim();
+
+    if (!field) {
+        showDeleterOutput('Please select a field', 'error');
+        return;
+    }
+
+    let camlXml = `<View>\n  <Query>\n    <Where>\n      `;
+
+    if (operator === 'IsNull') {
+        camlXml += `<IsNull>\n        <FieldRef Name='${field}'/>\n      </IsNull>`;
+    } else if (operator === 'IsNotNull') {
+        camlXml += `<IsNotNull>\n        <FieldRef Name='${field}'/>\n      </IsNotNull>`;
+    } else if (operator === 'Contains') {
+        camlXml += `<Contains>\n        <FieldRef Name='${field}'/>\n        <Value Type='${valueType}'>${value}</Value>\n      </Contains>`;
+    } else if (operator === 'BeginsWith') {
+        camlXml += `<BeginsWith>\n        <FieldRef Name='${field}'/>\n        <Value Type='${valueType}'>${value}</Value>\n      </BeginsWith>`;
+    } else {
+        camlXml += `<${operator}>\n        <FieldRef Name='${field}'/>\n        <Value Type='${valueType}'>${value}</Value>\n      </${operator}>`;
+    }
+
+    camlXml += `\n    </Where>\n  </Query>\n</View>`;
+
+    elements.spCamlQuery.value = camlXml;
+    showDeleterOutput('CAML query generated!', 'success');
+}
+
+async function previewListDeleterItems() {
+    const listTitle = elements.spListName.value.trim();
+    const folderPath = elements.spFolderPath.value.trim();
+
+    if (!listTitle) {
+        showDeleterOutput('❌ Please enter a list name', 'error');
+        return;
+    }
+
+    try {
+        showDeleterOutput('Fetching items...', 'info');
+        const camlQuery = getCAMLQuery();
+
+        // Send message to content script
+        const response = await sendMessageToContentScript({
+            action: 'previewListDeleterItems',
+            listTitle: listTitle,
+            camlQuery: camlQuery,
+            folderPath: folderPath
+        });
+
+        if (response && response.success) {
+            const items = response.items;
+            if (items.length === 0) {
+                showDeleterOutput('No items found matching the query.', 'info');
+            } else {
+                const preview = items.map(item => {
+                    const type = item.isFolder ? '[FOLDER]' : '[ITEM]';
+                    return `${type} ID:${item.id} | Title:${item.title}`;
+                }).join('\n');
+
+                showDeleterOutput(`✓ Found ${items.length} item(s):\n${preview}`, 'success');
+            }
+        } else {
+            showDeleterOutput(`❌ Error: ${response?.message || 'Failed to preview items'}`, 'error');
+        }
+    } catch (error) {
+        console.error('previewListDeleterItems error:', error);
+        const errorMsg = error.message.includes('Receiving end does not exist') 
+            ? '❌ Content script not loaded.\n\nPlease refresh the SharePoint page (F5) and try again.' 
+            : `❌ Error: ${error.message}`;
+        showDeleterOutput(errorMsg, 'error');
+    }
+}
+
+async function executeListDeleterOperation() {
+    const listTitle = elements.spListName.value.trim();
+    const mode = elements.spOperationMode.value;
+    const confirmed = elements.spConfirmDelete.checked;
+    const folderPath = elements.spFolderPath.value.trim();
+
+    if (!listTitle) {
+        showDeleterOutput('❌ Please enter a list name', 'error');
+        return;
+    }
+
+    if (!confirmed) {
+        showDeleterOutput('❌ Please confirm the action by checking the checkbox', 'error');
+        return;
+    }
+
+    try {
+        if (mode === 'deleteList') {
+            // Show confirmation dialog
+            const confirmDelete = confirm(`⚠️ WARNING!\n\nYou are about to PERMANENTLY DELETE the entire list:\n"${listTitle}"\n\nThis action CANNOT be undone. All items and data will be lost.\n\nAre you absolutely sure? Click OK to delete, or Cancel to abort.`);
+            
+            if (!confirmDelete) {
+                showDeleterOutput('❌ Deletion cancelled by user', 'info');
+                return;
+            }
+
+            showDeleterOutput('Deleting list...', 'info');
+
+            const response = await sendMessageToContentScript({
+                action: 'deleteList',
+                listTitle: listTitle
+            });
+
+            if (response && response.success) {
+                showDeleterOutput(`✓ List "${listTitle}" deleted successfully!`, 'success');
+            } else {
+                showDeleterOutput(`❌ Error: ${response?.message || 'Failed to delete list'}`, 'error');
+            }
+        } else if (mode === 'deleteItems') {
+            // Show confirmation dialog for items
+            const confirmDelete = confirm(`⚠️ WARNING!\n\nYou are about to PERMANENTLY DELETE items from list:\n"${listTitle}"\n\nThis action CANNOT be undone.\n\nAre you sure? Click OK to delete matching items, or Cancel to abort.`);
+            
+            if (!confirmDelete) {
+                showDeleterOutput('❌ Deletion cancelled by user', 'info');
+                return;
+            }
+
+            showDeleterOutput('Fetching items to delete...', 'info');
+            const camlQuery = getCAMLQuery();
+
+            const response = await sendMessageToContentScript({
+                action: 'deleteListItems',
+                listTitle: listTitle,
+                camlQuery: camlQuery,
+                folderPath: folderPath
+            });
+
+            if (response && response.success) {
+                const deleted = response.deleted;
+                showDeleterOutput(`✓ Successfully deleted ${deleted} item(s) from list "${listTitle}"`, 'success');
+            } else {
+                showDeleterOutput(`❌ Error: ${response?.message || 'Failed to delete items'}`, 'error');
+            }
+        } else {
+            // Preview mode
+            await previewListDeleterItems();
+        }
+    } catch (error) {
+        console.error('executeListDeleterOperation error:', error);
+        const errorMsg = error.message.includes('Receiving end does not exist') 
+            ? '❌ Content script not loaded.\n\nPlease refresh the SharePoint page (F5) and try again.' 
+            : `❌ Error: ${error.message}`;
+        showDeleterOutput(errorMsg, 'error');
+    }
+}
+
+function getCAMLQuery() {
+    let camlQuery = elements.spCamlQuery.value.trim();
+    const rowLimit = elements.spRowLimit.value;
+
+    if (!camlQuery) {
+        return `<View><RowLimit>${rowLimit}</RowLimit></View>`;
+    }
+
+    const parser = new DOMParser();
+    const xmlDoc = parser.parseFromString(camlQuery, 'text/xml');
+
+    let viewNode = xmlDoc.getElementsByTagName('View')[0];
+    if (!viewNode) {
+        const root = xmlDoc.documentElement;
+        if (root.tagName === 'View') {
+            viewNode = root;
+        } else {
+            viewNode = xmlDoc.createElement('View');
+            const queryNode = xmlDoc.getElementsByTagName('Query')[0];
+            if (queryNode) {
+                viewNode.appendChild(queryNode.cloneNode(true));
+            }
+            xmlDoc.appendChild(viewNode);
+        }
+    }
+
+    if (!viewNode.getElementsByTagName('RowLimit').length) {
+        const rowLimitElem = xmlDoc.createElement('RowLimit');
+        rowLimitElem.textContent = rowLimit;
+        viewNode.appendChild(rowLimitElem);
+    }
+
+    const serializer = new XMLSerializer();
+    return serializer.serializeToString(viewNode);
+}
+
+// ============================================================================
+// List Filter Functions
+// ============================================================================
+
+let lfAvailableColumns = [];
+let lfAvailableLists = [];
+
+// Handle Get Lists for List Filter
+async function handleLfGetLists() {
+    try {
+        showLfOutput('Loading lists...', 'info');
+
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tabs[0]) {
+            showLfOutput('No active tab found', 'error');
+            return;
+        }
+
+        const response = await chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'getAllLists'
+        });
+
+        if (response && response.success) {
+            lfAvailableLists = response.lists || [];
+            populateLfListDropdown(lfAvailableLists);
+            showLfOutput(`Found ${lfAvailableLists.length} lists`, 'success');
+        } else {
+            showLfOutput(`Failed to get lists: ${response?.message || 'Unknown error'}`, 'error');
+        }
+    } catch (error) {
+        console.error('handleLfGetLists error:', error);
+        const errorMsg = error.message.includes('Receiving end does not exist')
+            ? 'Content script not loaded.\n\nPlease refresh the SharePoint page (F5) and try again.'
+            : `Error: ${error.message}`;
+        showLfOutput(errorMsg, 'error');
+    }
+}
+
+function populateLfListDropdown(lists) {
+    elements.lfListDropdown.innerHTML = '<option value="">-- Select a list --</option>';
+    lists.forEach(list => {
+        const option = document.createElement('option');
+        option.value = list.title;
+        option.textContent = list.title;
+        elements.lfListDropdown.appendChild(option);
+    });
+}
+
+// Handle Get Columns
+async function handleLfGetColumns() {
+    const listTitle = elements.lfListDropdown.value;
+    if (!listTitle) {
+        showLfOutput('Please select a list first', 'error');
+        return;
+    }
+
+    try {
+        showLfOutput('Loading columns...', 'info');
+
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tabs[0]) {
+            showLfOutput('No active tab found', 'error');
+            return;
+        }
+
+        const response = await chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'getListFields',
+            listTitle: listTitle
+        });
+
+        if (response && response.success) {
+            lfAvailableColumns = response.fields || [];
+            populateLfColumnDropdown(lfAvailableColumns);
+            showLfOutput(`Found ${lfAvailableColumns.length} columns`, 'success');
+        } else {
+            showLfOutput(`Failed to get columns: ${response?.message || 'Unknown error'}`, 'error');
+        }
+    } catch (error) {
+        console.error('handleLfGetColumns error:', error);
+        const errorMsg = error.message.includes('Receiving end does not exist')
+            ? 'Content script not loaded.\n\nPlease refresh the SharePoint page (F5) and try again.'
+            : `Error: ${error.message}`;
+        showLfOutput(errorMsg, 'error');
+    }
+}
+
+function populateLfColumnDropdown(fields) {
+    elements.lfColumnDropdown.innerHTML = '<option value="">-- Select a column --</option>';
+    fields.forEach(field => {
+        const option = document.createElement('option');
+        option.value = field.internalName;
+        option.textContent = `${field.title} (${field.type})`;
+        option.dataset.type = field.type;
+        elements.lfColumnDropdown.appendChild(option);
+    });
+    elements.lfColumnDropdown.disabled = false;
+}
+
+// Handle column selection change
+elements.lfColumnDropdown.addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    if (selectedOption.value) {
+        elements.lfColumnTypeGroup.style.display = 'block';
+        elements.lfColumnType.value = selectedOption.dataset.type;
+    } else {
+        elements.lfColumnTypeGroup.style.display = 'none';
+    }
+});
+
+// Add Additional Filter
+function addAdditionalFilter() {
+    const container = elements.lfAdditionalFilters;
+
+    // Clear placeholder if it exists
+    if (container.querySelector('p')) {
+        container.innerHTML = '';
+    }
+
+    const filterIndex = filterAdditionalConditions.length;
+    filterAdditionalConditions.push({ id: Date.now() });
+
+    const filterDiv = document.createElement('div');
+    filterDiv.className = 'lf-additional-filter-row';
+    filterDiv.dataset.index = filterIndex;
+    filterDiv.style.cssText = 'display:flex;gap:5px;margin-bottom:5px;align-items:center;';
+
+    filterDiv.innerHTML = `
+        <select class="lf-additional-field sp-deleter-select" style="flex:1;">
+            <option value="">Select Field...</option>
+            ${lfAvailableColumns.map(f => `<option value="${f.internalName}">${f.title}</option>`).join('')}
+        </select>
+        <select class="lf-additional-operator sp-deleter-select" style="flex:1;">
+            <option value="Eq">Equals (=)</option>
+            <option value="Neq">Not Equals (!=)</option>
+            <option value="Contains">Contains</option>
+            <option value="BeginsWith">Begins With</option>
+            <option value="Lt">Less Than (&lt;)</option>
+            <option value="Le">Less Than Equal (&lt;=)</option>
+            <option value="Gt">Greater Than (&gt;)</option>
+            <option value="Ge">Greater Than Equal (&gt;=)</option>
+            <option value="IsNull">Is Null</option>
+            <option value="IsNotNull">Is Not Null</option>
+        </select>
+        <input type="text" class="lf-additional-value sp-deleter-input" placeholder="Value..." style="flex:1;">
+        <button type="button" class="lf-remove-filter btn" style="padding:5px 10px;background:#d13438;color:white;">×</button>
+    `;
+
+    container.appendChild(filterDiv);
+
+    // Add remove handler
+    filterDiv.querySelector('.lf-remove-filter').addEventListener('click', function() {
+        filterDiv.remove();
+        if (container.children.length === 0) {
+            container.innerHTML = '<p style="color:#888;font-style:italic;font-size:12px;">No additional filters. Click "+ Add Filter" to add more conditions.</p>';
+        }
+    });
+}
+
+// Apply List Filter
+async function applyListFilter() {
+    const listTitle = elements.lfListDropdown.value;
+    const columnName = elements.lfColumnDropdown.value;
+    const operator = elements.lfOperator.value;
+    const value = elements.lfValue.value;
+    const rowLimit = parseInt(elements.lfRowLimit.value) || 0;
+
+    if (!listTitle) {
+        showLfOutput('Please select a list', 'error');
+        return;
+    }
+
+    if (!columnName) {
+        showLfOutput('Please select a column', 'error');
+        return;
+    }
+
+    // Build CAML query
+    const camlQuery = buildFilterCAML(columnName, operator, value);
+
+    try {
+        showLfOutput('Applying filter...', 'info');
+
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tabs[0]) {
+            showLfOutput('No active tab found', 'error');
+            return;
+        }
+
+        const response = await chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'filterListItems',
+            listTitle: listTitle,
+            camlQuery: camlQuery,
+            rowLimit: rowLimit
+        });
+
+        if (response && response.success) {
+            displayFilterResults(response.results);
+            showLfOutput(`Found ${response.results.length} items`, 'success');
+        } else {
+            showLfOutput(`Failed to filter: ${response?.message || 'Unknown error'}`, 'error');
+        }
+    } catch (error) {
+        console.error('applyListFilter error:', error);
+        const errorMsg = error.message.includes('Receiving end does not exist')
+            ? 'Content script not loaded.\n\nPlease refresh the SharePoint page (F5) and try again.'
+            : `Error: ${error.message}`;
+        showLfOutput(errorMsg, 'error');
+    }
+}
+
+function buildFilterCAML(columnName, operator, value) {
+    let whereClause = '';
+
+    // Get additional filters
+    const additionalFilters = [];
+    document.querySelectorAll('.lf-additional-filter-row').forEach(row => {
+        const field = row.querySelector('.lf-additional-field').value;
+        const op = row.querySelector('.lf-additional-operator').value;
+        const val = row.querySelector('.lf-additional-value').value;
+        if (field && op) {
+            additionalFilters.push({ field, operator: op, value: val });
+        }
+    });
+
+    // Build where clause
+    if (operator === 'IsNull') {
+        whereClause = `<IsNull><FieldRef Name='${columnName}'/></IsNull>`;
+    } else if (operator === 'IsNotNull') {
+        whereClause = `<IsNotNull><FieldRef Name='${columnName}'/></IsNotNull>`;
+    } else if (operator === 'Contains') {
+        whereClause = `<Contains><FieldRef Name='${columnName}'/><Value Type='Text'>${escapeXml(value)}</Value></Contains>`;
+    } else if (operator === 'BeginsWith') {
+        whereClause = `<BeginsWith><FieldRef Name='${columnName}'/><Value Type='Text'>${escapeXml(value)}</Value></BeginsWith>`;
+    } else if (operator === 'In') {
+        const values = value.split(',').map(v => v.trim());
+        const orParts = values.map(v => `<Eq><FieldRef Name='${columnName}'/><Value Type='Text'>${escapeXml(v)}</Value></Eq>`).join('');
+        whereClause = `<Or>${orParts}</Or>`;
+    } else {
+        whereClause = `<${operator}><FieldRef Name='${columnName}'/><Value Type='Text'>${escapeXml(value)}</Value></${operator}>`;
+    }
+
+    // Add additional filters with And logic
+    if (additionalFilters.length > 0) {
+        const additionalClauses = additionalFilters.map(f => {
+            if (f.operator === 'IsNull') {
+                return `<IsNull><FieldRef Name='${f.field}'/></IsNull>`;
+            } else if (f.operator === 'IsNotNull') {
+                return `<IsNotNull><FieldRef Name='${f.field}'/></IsNotNull>`;
+            } else if (f.operator === 'Contains') {
+                return `<Contains><FieldRef Name='${f.field}'/><Value Type='Text'>${escapeXml(f.value)}</Value></Contains>`;
+            } else if (f.operator === 'BeginsWith') {
+                return `<BeginsWith><FieldRef Name='${f.field}'/><Value Type='Text'>${escapeXml(f.value)}</Value></BeginsWith>`;
+            } else {
+                return `<${f.operator}><FieldRef Name='${f.field}'/><Value Type='Text'>${escapeXml(f.value)}</Value></${f.operator}>`;
+            }
+        });
+
+        // Combine all with And
+        const allClauses = [whereClause, ...additionalClauses];
+        while (allClauses.length > 1) {
+            const first = allClauses.shift();
+            const second = allClauses.shift();
+            allClauses.unshift(`<And>${first}${second}</And>`);
+        }
+        whereClause = allClauses[0];
+    }
+
+    const rowLimit = elements.lfRowLimit.value || '100';
+
+    return `<View><Query><Where>${whereClause}</Where></Query><RowLimit>${rowLimit}</RowLimit></View>`;
+}
+
+function escapeXml(str) {
+    return str.replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;')
+              .replace(/'/g, '&apos;');
+}
+
+function displayFilterResults(results) {
+    if (!results || results.length === 0) {
+        elements.lfResultsSection.style.display = 'block';
+        elements.lfResultsCount.textContent = 'No items found';
+        elements.lfResultsThead.innerHTML = '';
+        elements.lfResultsTbody.innerHTML = '<tr><td colspan="100%">No matching items found</td></tr>';
+        return;
+    }
+
+    // Get all unique columns from results
+    const columns = Object.keys(results[0]);
+
+    // Build header
+    elements.lfResultsThead.innerHTML = '<tr>' +
+        columns.map(col => `<th>${col}</th>`).join('') +
+        '</tr>';
+
+    // Build body
+    elements.lfResultsTbody.innerHTML = results.map(item =>
+        '<tr>' +
+        columns.map(col => `<td>${item[col] !== null ? item[col] : ''}</td>`).join('') +
+        '</tr>'
+    ).join('');
+
+    elements.lfResultsCount.textContent = `${results.length} item(s) found`;
+    elements.lfResultsSection.style.display = 'block';
+}
+
+function clearListFilter() {
+    elements.lfListDropdown.value = '';
+    elements.lfColumnDropdown.value = '';
+    elements.lfColumnDropdown.disabled = true;
+    elements.lfColumnTypeGroup.style.display = 'none';
+    elements.lfOperator.value = 'Eq';
+    elements.lfValue.value = '';
+    elements.lfRowLimit.value = '100';
+    elements.lfAdditionalFilters.innerHTML = '<p style="color:#888;font-style:italic;font-size:12px;">No additional filters. Click "+ Add Filter" to add more conditions.</p>';
+    elements.lfResultsSection.style.display = 'none';
+    filterAdditionalConditions = [];
+}
+
+function showLfOutput(message, type = 'info') {
+    const outputDiv = document.createElement('div');
+    outputDiv.className = `lf-output-message`;
+    outputDiv.style.cssText = `
+        margin-top: 10px;
+        padding: 10px;
+        border-radius: 4px;
+        background: ${type === 'error' ? '#fde8e8' : type === 'success' ? '#e6f4ea' : '#e8f0fe'};
+        border: 1px solid ${type === 'error' ? '#d13438' : type === 'success' ? '#107c10' : '#0078d4'};
+        color: ${type === 'error' ? '#d13438' : type === 'success' ? '#107c10' : '#0078d4'};
+        white-space: pre-wrap;
+    `;
+    outputDiv.textContent = message;
+
+    // Remove previous messages
+    const prevMessages = document.querySelectorAll('.lf-output-message');
+    prevMessages.forEach(msg => msg.remove());
+
+    // Insert after the results section
+    elements.lfResultsSection.parentNode.insertBefore(outputDiv, elements.lfResultsSection);
 }
