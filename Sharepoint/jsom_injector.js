@@ -71,6 +71,14 @@
         if (data.type === 'SP_FIELD_CREATOR_FILTER_ITEMS') {
             handleFilterListItems(data.listTitle, data.camlQuery, data.rowLimit);
         }
+
+        if (data.type === 'SP_FIELD_CREATOR_GET_ALL_LISTS_WITH_FIELDS') {
+            handleGetAllListsWithFields();
+        }
+
+        if (data.type === 'SP_FIELD_CREATOR_SEARCH_ALL_LISTS_BY_FIELD') {
+            handleSearchAllListsByField(data.fieldName, data.camlQuery, data.rowLimit);
+        }
     });
 
     // Handle connection test
@@ -777,6 +785,307 @@
                 sendResponse('SP_FIELD_CREATOR_FILTER_ITEMS_RESPONSE', {
                     success: false,
                     message: `Error: ${error.message}`
+                });
+            }
+        });
+    }
+
+    // Handle get all lists with fields
+    function handleGetAllListsWithFields() {
+        ensureSPLoaded(function() {
+            try {
+                var context = SP.ClientContext.get_current();
+                var web = context.get_web();
+                var lists = web.get_lists();
+
+                context.load(lists, 'Include(Title,Id,ItemCount)');
+
+                context.executeQueryAsync(
+                    function() {
+                        var allLists = [];
+                        var listEnumerator = lists.getEnumerator();
+
+                        while (listEnumerator.moveNext()) {
+                            var list = listEnumerator.get_current();
+                            allLists.push({
+                                title: list.get_title(),
+                                id: list.get_id(),
+                                itemCount: list.get_itemCount()
+                            });
+                        }
+
+                        // Now get fields for each list - process sequentially
+                        var listsWithFields = [];
+                        var processedCount = 0;
+
+                        function processNextList() {
+                            if (processedCount >= allLists.length) {
+                                // All lists processed
+                                sendResponse('SP_FIELD_CREATOR_GET_ALL_LISTS_WITH_FIELDS_RESPONSE', {
+                                    success: true,
+                                    lists: listsWithFields
+                                });
+                                return;
+                            }
+
+                            var listInfo = allLists[processedCount];
+                            var listTitle = listInfo.title;
+
+                            // Load fields for this list
+                            var currentList = web.get_lists().getById(listInfo.id);
+                            var fields = currentList.get_fields();
+
+                            context.load(fields, 'Include(Title,InternalName,TypeAsString,FieldTypeKind,ReadOnlyField,Hidden)');
+
+                            context.executeQueryAsync(
+                                function() {
+                                    var fieldList = [];
+                                    var fieldEnumerator = fields.getEnumerator();
+
+                                    while (fieldEnumerator.moveNext()) {
+                                        var field = fieldEnumerator.get_current();
+                                        if (!field.get_hidden()) {
+                                            fieldList.push({
+                                                title: field.get_title(),
+                                                internalName: field.get_internalName(),
+                                                type: field.get_typeAsString()
+                                            });
+                                        }
+                                    }
+
+                                    listsWithFields.push({
+                                        title: listTitle,
+                                        fields: fieldList
+                                    });
+
+                                    processedCount++;
+                                    setTimeout(processNextList, 50); // Small delay between lists
+                                },
+                                function(sender, args) {
+                                    // Field loading failed, continue with next
+                                    console.warn('[SP Field Creator] Could not load fields for list:', listTitle);
+                                    listsWithFields.push({
+                                        title: listTitle,
+                                        fields: []
+                                    });
+
+                                    processedCount++;
+                                    setTimeout(processNextList, 50);
+                                }
+                            );
+                        }
+
+                        // Start processing
+                        processNextList();
+                    },
+                    function(sender, args) {
+                        console.error('[SP Field Creator] Error getting lists:', args.get_message());
+                        sendResponse('SP_FIELD_CREATOR_GET_ALL_LISTS_WITH_FIELDS_RESPONSE', {
+                            success: false,
+                            message: 'Error: ' + args.get_message()
+                        });
+                    }
+                );
+            } catch (error) {
+                console.error('[SP Field Creator] Exception getting lists with fields:', error);
+                sendResponse('SP_FIELD_CREATOR_GET_ALL_LISTS_WITH_FIELDS_RESPONSE', {
+                    success: false,
+                    message: 'Error: ' + (error.message || error.toString())
+                });
+            }
+        });
+    }
+
+    // Handle search all lists by field
+    function handleSearchAllListsByField(fieldName, camlQuery, rowLimit) {
+        console.log('[SP Field Creator] handleSearchAllListsByField called with fieldName:', fieldName);
+        ensureSPLoaded(function() {
+            try {
+                var context = SP.ClientContext.get_current();
+                var web = context.get_web();
+                var lists = web.get_lists();
+
+                context.load(lists, 'Include(Title,Id)');
+
+                context.executeQueryAsync(
+                    function() {
+                        console.log('[SP Field Creator] Got all lists, count:', lists.get_count());
+                        var allLists = [];
+                        var listEnumerator = lists.getEnumerator();
+
+                        while (listEnumerator.moveNext()) {
+                            var list = listEnumerator.get_current();
+                            allLists.push({
+                                title: list.get_title(),
+                                id: list.get_id()
+                            });
+                        }
+
+                        console.log('[SP Field Creator] Processing', allLists.length, 'lists for field:', fieldName);
+
+                        // Search each list for the field - process sequentially
+                        var searchResults = [];
+                        var listsWithField = [];
+                        var log = [];
+                        var totalLists = allLists.length;
+                        var processedCount = 0;
+
+                        function processNextList() {
+                            if (processedCount >= allLists.length) {
+                                // All lists processed
+                                console.log('[SP Field Creator] All lists processed. Results:', searchResults.length, 'lists with items');
+                                sendResponse('SP_FIELD_CREATOR_SEARCH_ALL_LISTS_BY_FIELD_RESPONSE', {
+                                    success: true,
+                                    results: searchResults,
+                                    listsWithField: listsWithField,
+                                    totalLists: totalLists,
+                                    fieldName: fieldName,
+                                    log: log
+                                });
+                                return;
+                            }
+
+                            var listInfo = allLists[processedCount];
+                            var listTitle = listInfo.title;
+                            console.log('[SP Field Creator] Processing list:', listTitle, '(', processedCount + 1, 'of', totalLists, ')');
+
+                            // First check if the field exists in this list
+                            var currentList = web.get_lists().getById(listInfo.id);
+                            var fields = currentList.get_fields();
+                            context.load(fields);
+
+                            context.executeQueryAsync(
+                                function() {
+                                    var fieldExists = false;
+                                    var fieldEnumerator = fields.getEnumerator();
+
+                                    while (fieldEnumerator.moveNext()) {
+                                        var field = fieldEnumerator.get_current();
+                                        if (field.get_internalName() === fieldName || field.get_title() === fieldName) {
+                                            fieldExists = true;
+                                            break;
+                                        }
+                                    }
+
+                                    if (fieldExists) {
+                                        listsWithField.push(listTitle);
+                                        console.log('[SP Field Creator] Field found in:', listTitle);
+
+                                        // Now search for items with the filter
+                                        var camlQueryObj = new SP.CamlQuery();
+                                        camlQueryObj.set_viewXml(camlQuery);
+
+                                        var items = currentList.getItems(camlQueryObj);
+                                        context.load(items);
+
+                                        context.executeQueryAsync(
+                                            function() {
+                                                var itemList = [];
+                                                var itemEnumerator = items.getEnumerator();
+
+                                                while (itemEnumerator.moveNext()) {
+                                                    var item = itemEnumerator.get_current();
+                                                    var itemData = { ID: item.get_id() };
+
+                                                    // Get Title field
+                                                    try {
+                                                        itemData['Title'] = item.get_item('Title') || '';
+                                                    } catch (e) {
+                                                        itemData['Title'] = '';
+                                                    }
+
+                                                    // Get the searched field value
+                                                    try {
+                                                        var fieldValue = item.get_item(fieldName);
+                                                        if (fieldValue !== null && typeof fieldValue === 'object') {
+                                                            if (typeof fieldValue.get_lookupValue === 'function') {
+                                                                itemData[fieldName] = fieldValue.get_lookupValue();
+                                                            } else if (typeof fieldValue.get_title === 'function') {
+                                                                itemData[fieldName] = fieldValue.get_title();
+                                                            } else {
+                                                                itemData[fieldName] = '[Object]';
+                                                            }
+                                                        } else if (fieldValue !== null) {
+                                                            itemData[fieldName] = String(fieldValue);
+                                                        } else {
+                                                            itemData[fieldName] = '';
+                                                        }
+                                                    } catch (e) {
+                                                        itemData[fieldName] = '';
+                                                    }
+
+                                                    itemList.push(itemData);
+                                                }
+
+                                                console.log('[SP Field Creator] Found', itemList.length, 'items in', listTitle);
+
+                                                if (itemList.length > 0) {
+                                                    searchResults.push({
+                                                        listTitle: listTitle,
+                                                        items: itemList
+                                                    });
+                                                    log.push({
+                                                        status: 'success',
+                                                        message: 'List "' + listTitle + '": Found ' + itemList.length + ' items'
+                                                    });
+                                                } else {
+                                                    log.push({
+                                                        status: 'success',
+                                                        message: 'List "' + listTitle + '": Field found, but no matching items'
+                                                    });
+                                                }
+
+                                                processedCount++;
+                                                setTimeout(processNextList, 50); // Small delay between lists
+                                            },
+                                            function(sender, args) {
+                                                console.error('[SP Field Creator] Error searching items in', listTitle, ':', args.get_message());
+                                                log.push({
+                                                    status: 'error',
+                                                    message: 'List "' + listTitle + '": Error searching items - ' + args.get_message()
+                                                });
+                                                processedCount++;
+                                                setTimeout(processNextList, 50);
+                                            }
+                                        );
+                                    } else {
+                                        console.log('[SP Field Creator] Field NOT found in:', listTitle);
+                                        log.push({
+                                            status: 'skipped',
+                                            message: 'List "' + listTitle + '": Field "' + fieldName + '" not found - skipped'
+                                        });
+                                        processedCount++;
+                                        setTimeout(processNextList, 50);
+                                    }
+                                },
+                                function(sender, args) {
+                                    console.error('[SP Field Creator] Error checking fields for', listTitle, ':', args.get_message());
+                                    log.push({
+                                        status: 'error',
+                                        message: 'List "' + listTitle + '": Error checking fields - ' + args.get_message()
+                                    });
+                                    processedCount++;
+                                    setTimeout(processNextList, 50);
+                                }
+                            );
+                        }
+
+                        // Start processing
+                        processNextList();
+                    },
+                    function(sender, args) {
+                        console.error('[SP Field Creator] Error getting lists:', args.get_message());
+                        sendResponse('SP_FIELD_CREATOR_SEARCH_ALL_LISTS_BY_FIELD_RESPONSE', {
+                            success: false,
+                            message: 'Error: ' + args.get_message()
+                        });
+                    }
+                );
+            } catch (error) {
+                console.error('[SP Field Creator] Exception searching all lists:', error);
+                sendResponse('SP_FIELD_CREATOR_SEARCH_ALL_LISTS_BY_FIELD_RESPONSE', {
+                    success: false,
+                    message: 'Error: ' + (error.message || error.toString())
                 });
             }
         });

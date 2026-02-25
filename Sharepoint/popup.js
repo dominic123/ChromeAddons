@@ -3,6 +3,8 @@ let csvData = [];
 let isConnected = false;
 let currentTabId = null;
 let filterAdditionalConditions = [];
+let lfaAllResults = []; // Store all results from List Filter All
+let lfaAllLists = []; // Store all lists info
 
 // DOM Elements
 const elements = {
@@ -12,11 +14,13 @@ const elements = {
     listCountView: document.getElementById('listCountView'),
     listDeleterView: document.getElementById('listDeleterView'),
     listFilterView: document.getElementById('listFilterView'),
+    listFilterAllView: document.getElementById('listFilterAllView'),
     openFormBtn: document.getElementById('openFormBtn'),
     checkUncheckBtn: document.getElementById('checkUncheckBtn'),
     listCountBtn: document.getElementById('listCountBtn'),
     listDeleterBtn: document.getElementById('listDeleterBtn'),
     listFilterBtn: document.getElementById('listFilterBtn'),
+    listFilterAllBtn: document.getElementById('listFilterAllBtn'),
     backBtn: document.getElementById('backBtn'),
     backToWelcomeBtn: document.getElementById('backToWelcomeBtn'),
     backToWelcomeFromListCountBtn: document.getElementById('backToWelcomeFromListCountBtn'),
@@ -40,6 +44,25 @@ const elements = {
     lfResultsCount: document.getElementById('lf-results-count'),
     lfResultsThead: document.getElementById('lf-results-thead'),
     lfResultsTbody: document.getElementById('lf-results-tbody'),
+    // List Filter All elements
+    lfaGetAllColumns: document.getElementById('lfa-get-all-columns'),
+    lfaColumnName: document.getElementById('lfa-column-name'),
+    lfaOperator: document.getElementById('lfa-operator'),
+    lfaValue: document.getElementById('lfa-value'),
+    lfaRowLimit: document.getElementById('lfa-row-limit'),
+    lfaSearchBtn: document.getElementById('lfa-search-btn'),
+    lfaClearBtn: document.getElementById('lfa-clear-btn'),
+    lfaProgress: document.getElementById('lfa-progress'),
+    lfaProgressText: document.getElementById('lfa-progress-text'),
+    lfaResultsSection: document.getElementById('lfa-results-section'),
+    lfaSummaryText: document.getElementById('lfa-summary-text'),
+    lfaLogContent: document.getElementById('lfa-log-content'),
+    lfaListSelector: document.getElementById('lfa-list-selector'),
+    lfaResultListSelect: document.getElementById('lfa-result-list-select'),
+    lfaListItemCount: document.getElementById('lfa-list-item-count'),
+    lfaResultsThead: document.getElementById('lfa-results-thead'),
+    lfaResultsTbody: document.getElementById('lfa-results-tbody'),
+    lfaExportBtn: document.getElementById('lfa-export-btn'),
     checkAllBtn: document.getElementById('checkAllBtn'),
     uncheckAllBtn: document.getElementById('uncheckAllBtn'),
     checkboxResult: document.getElementById('checkboxResult'),
@@ -267,6 +290,48 @@ function setupEventListeners() {
     // List Filter - Clear Filter
     if (elements.lfClearFilter) {
         elements.lfClearFilter.addEventListener('click', clearListFilter);
+    }
+
+    // List Filter All button
+    if (elements.listFilterAllBtn) {
+        elements.listFilterAllBtn.addEventListener('click', openListFilterAllView);
+    }
+
+    // Back to Welcome button (from List Filter All view)
+    if (elements.backToWelcomeFromListFilterAllBtn) {
+        elements.backToWelcomeFromListFilterAllBtn.addEventListener('click', closeListFilterAllView);
+    }
+
+    // List Filter All - Quick column buttons
+    document.querySelectorAll('.lfa-quick-col').forEach(btn => {
+        btn.addEventListener('click', function() {
+            elements.lfaColumnName.value = this.textContent;
+        });
+    });
+
+    // List Filter All - Get All Columns
+    if (elements.lfaGetAllColumns) {
+        elements.lfaGetAllColumns.addEventListener('click', handleLfaGetAllColumns);
+    }
+
+    // List Filter All - Search
+    if (elements.lfaSearchBtn) {
+        elements.lfaSearchBtn.addEventListener('click', handleLfaSearch);
+    }
+
+    // List Filter All - Clear
+    if (elements.lfaClearBtn) {
+        elements.lfaClearBtn.addEventListener('click', clearLfaResults);
+    }
+
+    // List Filter All - List selector
+    if (elements.lfaResultListSelect) {
+        elements.lfaResultListSelect.addEventListener('change', filterLfaResults);
+    }
+
+    // List Filter All - Export
+    if (elements.lfaExportBtn) {
+        elements.lfaExportBtn.addEventListener('click', exportLfaResults);
     }
 
     // Connect button
@@ -890,6 +955,20 @@ function openListFilterView() {
 function closeListFilterView() {
     if (elements.welcomeScreen && elements.listFilterView) {
         elements.listFilterView.classList.add('hidden');
+        elements.welcomeScreen.classList.remove('hidden');
+    }
+}
+
+function openListFilterAllView() {
+    if (elements.welcomeScreen && elements.listFilterAllView) {
+        elements.welcomeScreen.classList.add('hidden');
+        elements.listFilterAllView.classList.remove('hidden');
+    }
+}
+
+function closeListFilterAllView() {
+    if (elements.welcomeScreen && elements.listFilterAllView) {
+        elements.listFilterAllView.classList.add('hidden');
         elements.welcomeScreen.classList.remove('hidden');
     }
 }
@@ -1950,4 +2029,355 @@ function showLfOutput(message, type = 'info') {
 
     // Insert after the results section
     elements.lfResultsSection.parentNode.insertBefore(outputDiv, elements.lfResultsSection);
+}
+
+// ============================================================================
+// List Filter All Lists Functions
+// ============================================================================
+
+// Handle Get All Columns from All Lists
+async function handleLfaGetAllColumns() {
+    try {
+        showLfaProgress('Loading all columns from all lists...');
+
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tabs[0]) {
+            showLfaError('No active tab found');
+            return;
+        }
+
+        const response = await chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'getAllListsWithFields'
+        });
+
+        if (response && response.success) {
+            displayAllColumns(response.lists);
+            hideLfaProgress();
+        } else {
+            showLfaError(`Failed to get columns: ${response?.message || 'Unknown error'}`);
+        }
+    } catch (error) {
+        console.error('handleLfaGetAllColumns error:', error);
+        showLfaError(error.message.includes('Receiving end does not exist')
+            ? 'Content script not loaded.\n\nPlease refresh the SharePoint page (F5) and try again.'
+            : `Error: ${error.message}`);
+    }
+}
+
+function displayAllColumns(lists) {
+    const allColumns = new Map(); // columnName -> {lists: [listNames], types: Set}
+
+    lists.forEach(list => {
+        if (list.fields) {
+            list.fields.forEach(field => {
+                if (!allColumns.has(field.title)) {
+                    allColumns.set(field.title, {
+                        internalName: field.internalName,
+                        lists: [],
+                        types: new Set()
+                    });
+                }
+                allColumns.get(field.title).lists.push(list.title);
+                allColumns.get(field.title).types.add(field.type);
+            });
+        }
+    });
+
+    let html = '<div style="max-height:300px;overflow-y:auto;padding:10px;background:#f9f9f9;border:1px solid #ddd;border-radius:4px;">';
+    html += '<h4 style="margin:0 0 10px 0;">All Columns Across All Lists</h4>';
+    html += '<table style="width:100%;font-size:12px;border-collapse:collapse;">';
+    html += '<tr style="background:#e0e0e0;"><th style="padding:5px;text-align:left;border-bottom:1px solid #ccc;">Column</th><th style="padding:5px;text-align:left;border-bottom:1px solid #ccc;">Type</th><th style="padding:5px;text-align:left;border-bottom:1px solid #ccc;">Lists</th></tr>';
+
+    const sortedColumns = Array.from(allColumns.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    sortedColumns.forEach(([colName, info]) => {
+        const types = Array.from(info.types).join(', ');
+        const lists = info.lists.join(', ');
+        html += `<tr style="border-bottom:1px solid #eee;">
+            <td style="padding:5px;"><strong>${colName}</strong> (${info.internalName})</td>
+            <td style="padding:5px;">${types}</td>
+            <td style="padding:5px;font-size:11px;color:#666;">${lists}</td>
+        </tr>`;
+    });
+
+    html += '</table></div>';
+
+    // Create modal or show in results
+    showLfaModal('All Columns', html);
+}
+
+function showLfaModal(title, content) {
+    // Create modal overlay
+    let modal = document.getElementById('lfa-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'lfa-modal';
+        modal.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5); z-index: 10000;
+            display: flex; align-items: center; justify-content: center;
+        `;
+        document.body.appendChild(modal);
+    }
+
+    modal.innerHTML = `
+        <div style="background: white; padding: 20px; border-radius: 8px; max-width: 800px; max-height: 80vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 style="margin: 0;">${title}</h2>
+                <button id="lfa-close-modal" style="background: #d13438; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer;">✕ Close</button>
+            </div>
+            ${content}
+        </div>
+    `;
+
+    modal.style.display = 'flex';
+
+    document.getElementById('lfa-close-modal').addEventListener('click', () => {
+        modal.style.display = 'none';
+    });
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+}
+
+// Handle Search All Lists
+async function handleLfaSearch() {
+    const columnName = elements.lfaColumnName.value.trim();
+    const operator = elements.lfaOperator.value;
+    const value = elements.lfaValue.value.trim();
+    const rowLimit = parseInt(elements.lfaRowLimit.value) || 0;
+
+    if (!columnName) {
+        showLfaError('Please enter a column name');
+        return;
+    }
+
+    // Build CAML query
+    const camlQuery = buildLfaCAML(columnName, operator, value);
+    console.log('[LFA] CAML Query:', camlQuery);
+
+    try {
+        showLfaProgress('Searching all lists...');
+        elements.lfaResultsSection.style.display = 'none';
+
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tabs[0]) {
+            showLfaError('No active tab found');
+            return;
+        }
+
+        console.log('[LFA] Sending message to content script');
+        const response = await chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'searchAllListsByField',
+            fieldName: columnName,
+            camlQuery: camlQuery,
+            rowLimit: rowLimit
+        });
+        console.log('[LFA] Received response:', response);
+
+        if (response && response.success) {
+            displayLfaResults(response);
+            hideLfaProgress();
+        } else {
+            showLfaError(`Search failed: ${response?.message || 'Unknown error'}. Check browser console for details.`);
+        }
+    } catch (error) {
+        console.error('handleLfaSearch error:', error);
+        showLfaError(error.message.includes('Receiving end does not exist')
+            ? 'Content script not loaded.\n\nPlease refresh the SharePoint page (F5) and try again.'
+            : `Error: ${error.message}`);
+        hideLfaProgress();
+    }
+}
+
+function buildLfaCAML(fieldName, operator, value) {
+    let whereClause = '';
+
+    if (operator === 'IsNull') {
+        whereClause = `<IsNull><FieldRef Name='${fieldName}'/></IsNull>`;
+    } else if (operator === 'IsNotNull') {
+        whereClause = `<IsNotNull><FieldRef Name='${fieldName}'/></IsNotNull>`;
+    } else if (operator === 'Contains') {
+        whereClause = `<Contains><FieldRef Name='${fieldName}'/><Value Type='Text'>${escapeXml(value)}</Value></Contains>`;
+    } else if (operator === 'BeginsWith') {
+        whereClause = `<BeginsWith><FieldRef Name='${fieldName}'/><Value Type='Text'>${escapeXml(value)}</Value></BeginsWith>`;
+    } else {
+        whereClause = `<${operator}><FieldRef Name='${fieldName}'/><Value Type='Text'>${escapeXml(value)}</Value></${operator}>`;
+    }
+
+    const rowLimit = elements.lfaRowLimit.value || '100';
+
+    return `<View><Query><Where>${whereClause}</Where></Query><RowLimit>${rowLimit}</RowLimit></View>`;
+}
+
+function displayLfaResults(response) {
+    lfaAllResults = response.results || [];
+    lfaAllLists = response.listsWithField || [];
+
+    // Show results section
+    elements.lfaResultsSection.style.display = 'block';
+
+    // Update summary
+    const totalItems = lfaAllResults.reduce((sum, r) => sum + r.items.length, 0);
+    elements.lfaSummaryText.innerHTML = `
+        <strong>📊 Summary:</strong><br>
+        • Total lists searched: ${response.totalLists}<br>
+        • Lists with field "${response.fieldName}": ${lfaAllLists.length}<br>
+        • Lists with matching items: ${lfaAllResults.length}<br>
+        • Total matching items: ${totalItems}
+    `;
+
+    // Update log
+    let logHtml = '';
+    response.log?.forEach(log => {
+        const icon = log.status === 'success' ? '✅' : log.status === 'skipped' ? '⏭️' : '❌';
+        const color = log.status === 'success' ? '#107c10' : log.status === 'skipped' ? '#666' : '#d13438';
+        logHtml += `<div style="color:${color};margin-bottom:2px;">${icon} ${log.message}</div>`;
+    });
+    elements.lfaLogContent.innerHTML = logHtml;
+
+    // Populate list selector
+    elements.lfaResultListSelect.innerHTML = '<option value="all">-- All Lists --</option>';
+    lfaAllResults.forEach(result => {
+        const option = document.createElement('option');
+        option.value = result.listTitle;
+        option.textContent = `${result.listTitle} (${result.items.length} items)`;
+        elements.lfaResultListSelect.appendChild(option);
+    });
+
+    // Display all results
+    renderLfaTable('all');
+}
+
+function renderLfaTable(listFilter) {
+    let displayResults = [];
+
+    if (listFilter === 'all') {
+        // Add list name column to each item
+        lfaAllResults.forEach(result => {
+            result.items.forEach(item => {
+                displayResults.push({
+                    ...item,
+                    '_ListName': result.listTitle
+                });
+            });
+        });
+    } else {
+        const listData = lfaAllResults.find(r => r.listTitle === listFilter);
+        if (listData) {
+            displayResults = listData.items;
+            elements.lfaListItemCount.textContent = `${displayResults.length} items`;
+        }
+    }
+
+    if (displayResults.length === 0) {
+        elements.lfaResultsThead.innerHTML = '';
+        elements.lfaResultsTbody.innerHTML = '<tr><td colspan="100%">No items to display</td></tr>';
+        return;
+    }
+
+    // Get all columns
+    const columns = Object.keys(displayResults[0]);
+    // Move _ListName to front
+    const listNameIndex = columns.indexOf('_ListName');
+    if (listNameIndex > -1) {
+        columns.splice(listNameIndex, 1);
+        columns.unshift('_ListName');
+    }
+
+    // Build header
+    elements.lfaResultsThead.innerHTML = '<tr>' +
+        columns.map(col => `<th>${col}</th>`).join('') +
+        '</tr>';
+
+    // Build body
+    elements.lfaResultsTbody.innerHTML = displayResults.slice(0, 500).map(item =>
+        '<tr>' +
+        columns.map(col => `<td>${item[col] !== null && item[col] !== undefined ? item[col] : ''}</td>`).join('') +
+        '</tr>'
+    ).join('');
+
+    if (displayResults.length > 500) {
+        elements.lfaResultsTbody.innerHTML += `<tr><td colspan="${columns.length}" style="text-align:center;color:#666;">... and ${displayResults.length - 500} more items (showing first 500)</td></tr>`;
+    }
+
+    // Update item count for "all" view
+    if (listFilter === 'all') {
+        elements.lfaListItemCount.textContent = `${displayResults.length} total items`;
+    }
+}
+
+function filterLfaResults() {
+    const selectedList = elements.lfaResultListSelect.value;
+    renderLfaTable(selectedList);
+}
+
+function clearLfaResults() {
+    elements.lfaColumnName.value = '';
+    elements.lfaOperator.value = 'Eq';
+    elements.lfaValue.value = '';
+    elements.lfaRowLimit.value = '100';
+    elements.lfaResultsSection.style.display = 'none';
+    elements.lfaLogContent.innerHTML = '';
+    lfaAllResults = [];
+    lfaAllLists = [];
+}
+
+function exportLfaResults() {
+    if (lfaAllResults.length === 0) {
+        alert('No results to export');
+        return;
+    }
+
+    let csv = '';
+
+    // Get all columns
+    const allColumns = new Set();
+    lfaAllResults.forEach(result => {
+        result.items.forEach(item => {
+            Object.keys(item).forEach(k => allColumns.add(k));
+        });
+    });
+
+    const columns = Array.from(allColumns);
+    columns.unshift('_ListName');
+
+    // Header
+    csv += columns.join(',') + '\n';
+
+    // Rows
+    lfaAllResults.forEach(result => {
+        result.items.forEach(item => {
+            const row = columns.map(col => {
+                const val = item[col] !== undefined ? item[col] : (col === '_ListName' ? result.listTitle : '');
+                return '"' + String(val).replace(/"/g, '""') + '"';
+            });
+            csv += row.join(',') + '\n';
+        });
+    });
+
+    // Download
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'sharepoint_filter_results.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function showLfaProgress(text) {
+    elements.lfaProgress.style.display = 'block';
+    elements.lfaProgressText.textContent = text;
+}
+
+function hideLfaProgress() {
+    elements.lfaProgress.style.display = 'none';
+}
+
+function showLfaError(message) {
+    hideLfaProgress();
+    alert('Error: ' + message);
 }

@@ -22,6 +22,7 @@
                 <button id="listCountBtn" class="btn btn-primary btn-large">List Count Aggregator</button>
                 <button id="listDeleterBtn" class="btn btn-danger btn-large">List Deleter</button>
                 <button id="listFilterBtn" class="btn btn-info btn-large">List Filter</button>
+                <button id="listFilterAllBtn" class="btn btn-warning btn-large">List Filter All Lists</button>
             </div>
         </div>
 
@@ -402,6 +403,120 @@ Example:
                             <tbody id="lf-results-tbody"></tbody>
                         </table>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- List Filter All Lists View (hidden by default) -->
+        <div id="listFilterAllView" class="main-content hidden">
+            <header>
+                <h1>List Filter All Lists</h1>
+                <p class="subtitle">Bulk search across all SharePoint lists for a specific column</p>
+                <button id="backToWelcomeFromListFilterAllBtn" class="btn-back">← Back</button>
+            </header>
+            <div class="list-filter-all-content">
+                <!-- Column Input -->
+                <div class="sp-deleter-group">
+                    <label class="sp-deleter-label">
+                        <span style="display:flex;justify-content:space-between;align-items:center;">
+                            <span>Column / Field Name</span>
+                            <button type="button" id="lfa-get-all-columns" class="btn" style="width:auto;padding:4px 12px;font-size:12px;background:#0078d4;color:white;margin:0;">📋 Show All Columns from All Lists</button>
+                        </span>
+                    </label>
+                    <input type="text" id="lfa-column-name" class="sp-deleter-input" placeholder="Enter column name (e.g., Status, Title, Created)">
+                    <small class="help-text">Enter the internal name or display name of the column to search across all lists</small>
+                </div>
+
+                <!-- Common Columns Quick Select -->
+                <div class="sp-deleter-group" style="background:#f0f6fc;padding:10px;border-radius:4px;border:1px dashed #0078d4;">
+                    <label class="sp-deleter-label" style="color:#0078d4;">⚡ Common Columns (Quick Select)</label>
+                    <div style="display:flex;gap:5px;flex-wrap:wrap;">
+                        <button type="button" class="lfa-quick-col btn" style="flex:1;min-width:80px;padding:6px 10px;font-size:12px;background:#0078d4;color:white;">Title</button>
+                        <button type="button" class="lfa-quick-col btn" style="flex:1;min-width:80px;padding:6px 10px;font-size:12px;background:#0078d4;color:white;">Status</button>
+                        <button type="button" class="lfa-quick-col btn" style="flex:1;min-width:80px;padding:6px 10px;font-size:12px;background:#0078d4;color:white;">Created</button>
+                        <button type="button" class="lfa-quick-col btn" style="flex:1;min-width:80px;padding:6px 10px;font-size:12px;background:#0078d4;color:white;">Modified</button>
+                        <button type="button" class="lfa-quick-col btn" style="flex:1;min-width:80px;padding:6px 10px;font-size:12px;background:#0078d4;color:white;">Author</button>
+                        <button type="button" class="lfa-quick-col btn" style="flex:1;min-width:80px;padding:6px 10px;font-size:12px;background:#0078d4;color:white;">Editor</button>
+                    </div>
+                </div>
+
+                <!-- Filter Operator -->
+                <div class="sp-deleter-group">
+                    <label class="sp-deleter-label">Filter Operator</label>
+                    <select id="lfa-operator" class="sp-deleter-select">
+                        <option value="Eq">Equals (=)</option>
+                        <option value="Neq">Not Equals (!=)</option>
+                        <option value="Contains">Contains</option>
+                        <option value="BeginsWith">Begins With</option>
+                        <option value="Lt">Less Than (&lt;)</option>
+                        <option value="Le">Less Than Equal (&lt;=)</option>
+                        <option value="Gt">Greater Than (&gt;)</option>
+                        <option value="Ge">Greater Than Equal (&gt;=)</option>
+                        <option value="IsNull">Is Null</option>
+                        <option value="IsNotNull">Is Not Null</option>
+                    </select>
+                </div>
+
+                <!-- Filter Value -->
+                <div class="sp-deleter-group">
+                    <label class="sp-deleter-label">Filter Value</label>
+                    <input type="text" id="lfa-value" class="sp-deleter-input" placeholder="Enter value to filter by...">
+                </div>
+
+                <!-- Row Limit -->
+                <div class="sp-deleter-group">
+                    <label class="sp-deleter-label">Row Limit Per List (0 for unlimited)</label>
+                    <input type="number" id="lfa-row-limit" class="sp-deleter-input" value="100" min="0">
+                </div>
+
+                <!-- Actions -->
+                <div class="sp-deleter-group">
+                    <button id="lfa-search-btn" class="btn btn-warning">🔍 Search All Lists</button>
+                    <button id="lfa-clear-btn" class="btn btn-secondary">Clear</button>
+                </div>
+
+                <!-- Progress -->
+                <div id="lfa-progress" style="display:none;padding:10px;background:#f9f9f9;border:1px solid #ddd;border-radius:4px;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div class="spinner" style="width:20px;height:20px;border:2px solid #0078d4;border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;"></div>
+                        <span id="lfa-progress-text">Searching...</span>
+                    </div>
+                </div>
+
+                <!-- Results Section -->
+                <div id="lfa-results-section" class="sp-deleter-output" style="display:none;margin-top:15px;">
+                    <h3>Search Results</h3>
+
+                    <!-- Summary -->
+                    <div id="lfa-summary" style="padding:10px;background:#e6f2ff;border:1px solid #0078d4;border-radius:4px;margin-bottom:15px;">
+                        <div id="lfa-summary-text"></div>
+                    </div>
+
+                    <!-- Log -->
+                    <div id="lfa-log-section" style="margin-bottom:15px;padding:10px;background:#f9f9f9;border:1px solid #ddd;border-radius:4px;">
+                        <h4 style="margin:0 0 10px 0;font-size:14px;color:#666;">📋 Search Log</h4>
+                        <div id="lfa-log-content" style="font-size:11px;max-height:150px;overflow-y:auto;font-family:monospace;"></div>
+                    </div>
+
+                    <!-- List Selector -->
+                    <div id="lfa-list-selector" style="margin-bottom:15px;">
+                        <label style="font-size:13px;font-weight:600;">Show results from list:</label>
+                        <select id="lfa-result-list-select" class="sp-deleter-select" style="margin-top:5px;">
+                            <option value="all">-- All Lists --</option>
+                        </select>
+                        <span id="lfa-list-item-count" style="margin-left:10px;font-size:12px;color:#666;"></span>
+                    </div>
+
+                    <!-- Results Table -->
+                    <div class="table-container">
+                        <table id="lfa-results-table">
+                            <thead id="lfa-results-thead"></thead>
+                            <tbody id="lfa-results-tbody"></tbody>
+                        </table>
+                    </div>
+
+                    <!-- Export Button -->
+                    <button id="lfa-export-btn" class="btn btn-secondary" style="margin-top:10px;">📥 Export Results to CSV</button>
                 </div>
             </div>
         </div>

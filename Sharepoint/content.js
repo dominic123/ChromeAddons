@@ -73,6 +73,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true; // Keep message channel open for async response
     }
 
+    if (request.action === 'getAllListsWithFields') {
+        handleGetAllListsWithFields(request, sendResponse);
+        return true; // Keep message channel open for async response
+    }
+
+    if (request.action === 'searchAllListsByField') {
+        handleSearchAllListsByField(request, sendResponse);
+        return true; // Keep message channel open for async response
+    }
+
     if (request.action === 'uncheckAllCheckboxes') {
         // Directly uncheck all checkboxes on the page
         const checkboxes = document.querySelectorAll('input[type="checkbox"]');
@@ -284,6 +294,45 @@ function handleFilterListItems(request, sendResponse) {
     window.postMessage({
         type: 'SP_FIELD_CREATOR_FILTER_ITEMS',
         listTitle: listTitle,
+        camlQuery: camlQuery,
+        rowLimit: rowLimit
+    }, '*');
+}
+
+// Handle get all lists with fields
+function handleGetAllListsWithFields(request, sendResponse) {
+    // Listen for response from page context FIRST
+    const messageHandler = (event) => {
+        if (event.data.type === 'SP_FIELD_CREATOR_GET_ALL_LISTS_WITH_FIELDS_RESPONSE') {
+            window.removeEventListener('message', messageHandler);
+            sendResponse(event.data.response);
+        }
+    };
+    window.addEventListener('message', messageHandler);
+
+    // Send message to page context script AFTER listener is attached
+    window.postMessage({
+        type: 'SP_FIELD_CREATOR_GET_ALL_LISTS_WITH_FIELDS'
+    }, '*');
+}
+
+// Handle search all lists by field
+function handleSearchAllListsByField(request, sendResponse) {
+    const { fieldName, camlQuery, rowLimit } = request;
+
+    // Listen for response from page context FIRST
+    const messageHandler = (event) => {
+        if (event.data.type === 'SP_FIELD_CREATOR_SEARCH_ALL_LISTS_BY_FIELD_RESPONSE') {
+            window.removeEventListener('message', messageHandler);
+            sendResponse(event.data.response);
+        }
+    };
+    window.addEventListener('message', messageHandler);
+
+    // Send message to page context script AFTER listener is attached
+    window.postMessage({
+        type: 'SP_FIELD_CREATOR_SEARCH_ALL_LISTS_BY_FIELD',
+        fieldName: fieldName,
         camlQuery: camlQuery,
         rowLimit: rowLimit
     }, '*');
