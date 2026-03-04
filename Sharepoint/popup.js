@@ -5,6 +5,7 @@ let currentTabId = null;
 let filterAdditionalConditions = [];
 let lfaAllResults = []; // Store all results from List Filter All
 let lfaAllLists = []; // Store all lists info
+let fesResults = []; // Store E-services fetch results
 
 // DOM Elements
 const elements = {
@@ -15,6 +16,8 @@ const elements = {
     listDeleterView: document.getElementById('listDeleterView'),
     listFilterView: document.getElementById('listFilterView'),
     listFilterAllView: document.getElementById('listFilterAllView'),
+    fetchEServicesView: document.getElementById('fetchEServicesView'),
+    fetchEServicesBtn: document.getElementById('fetchEServicesBtn'),
     openFormBtn: document.getElementById('openFormBtn'),
     checkUncheckBtn: document.getElementById('checkUncheckBtn'),
     listCountBtn: document.getElementById('listCountBtn'),
@@ -26,6 +29,19 @@ const elements = {
     backToWelcomeFromListCountBtn: document.getElementById('backToWelcomeFromListCountBtn'),
     backToWelcomeFromListDeleterBtn: document.getElementById('backToWelcomeFromListDeleterBtn'),
     backToWelcomeFromListFilterBtn: document.getElementById('backToWelcomeFromListFilterBtn'),
+    backToWelcomeFromListFilterAllBtn: document.getElementById('backToWelcomeFromListFilterAllBtn'),
+    backToWelcomeFromFetchEServicesBtn: document.getElementById('backToWelcomeFromFetchEServicesBtn'),
+    // Fetch E-services elements
+    fesColumns: document.getElementById('fes-columns'),
+    fesRowLimit: document.getElementById('fes-row-limit'),
+    fesFetchBtn: document.getElementById('fes-fetch-btn'),
+    fesExportBtn: document.getElementById('fes-export-btn'),
+    fesProgress: document.getElementById('fes-progress'),
+    fesProgressText: document.getElementById('fes-progress-text'),
+    fesResultsSection: document.getElementById('fes-results-section'),
+    fesSummaryText: document.getElementById('fes-summary-text'),
+    fesResultsThead: document.getElementById('fes-results-thead'),
+    fesResultsTbody: document.getElementById('fes-results-tbody'),
     // List Filter elements
     lfGetLists: document.getElementById('lf-get-lists'),
     lfListDropdown: document.getElementById('lf-list-dropdown'),
@@ -332,6 +348,26 @@ function setupEventListeners() {
     // List Filter All - Export
     if (elements.lfaExportBtn) {
         elements.lfaExportBtn.addEventListener('click', exportLfaResults);
+    }
+
+    // Fetch E-services button
+    if (elements.fetchEServicesBtn) {
+        elements.fetchEServicesBtn.addEventListener('click', openFetchEServicesView);
+    }
+
+    // Back to Welcome button (from Fetch E-services view)
+    if (elements.backToWelcomeFromFetchEServicesBtn) {
+        elements.backToWelcomeFromFetchEServicesBtn.addEventListener('click', closeFetchEServicesView);
+    }
+
+    // Fetch E-services - Fetch button
+    if (elements.fesFetchBtn) {
+        elements.fesFetchBtn.addEventListener('click', handleFesFetch);
+    }
+
+    // Fetch E-services - Export button
+    if (elements.fesExportBtn) {
+        elements.fesExportBtn.addEventListener('click', exportFesResults);
     }
 
     // Connect button
@@ -969,6 +1005,20 @@ function openListFilterAllView() {
 function closeListFilterAllView() {
     if (elements.welcomeScreen && elements.listFilterAllView) {
         elements.listFilterAllView.classList.add('hidden');
+        elements.welcomeScreen.classList.remove('hidden');
+    }
+}
+
+function openFetchEServicesView() {
+    if (elements.welcomeScreen && elements.fetchEServicesView) {
+        elements.welcomeScreen.classList.add('hidden');
+        elements.fetchEServicesView.classList.remove('hidden');
+    }
+}
+
+function closeFetchEServicesView() {
+    if (elements.welcomeScreen && elements.fetchEServicesView) {
+        elements.fetchEServicesView.classList.add('hidden');
         elements.welcomeScreen.classList.remove('hidden');
     }
 }
@@ -2379,5 +2429,156 @@ function hideLfaProgress() {
 
 function showLfaError(message) {
     hideLfaProgress();
+    alert('Error: ' + message);
+}
+
+// ============================================================================
+// Fetch E-services Functions
+// ============================================================================
+
+async function handleFesFetch() {
+    const columnsInput = elements.fesColumns.value.trim();
+    const rowLimit = parseInt(elements.fesRowLimit.value) || 0;
+
+    // Parse columns from comma-separated input
+    const columns = columnsInput.split(',').map(col => col.trim()).filter(col => col.length > 0);
+
+    if (columns.length === 0) {
+        alert('Please enter at least one column name');
+        return;
+    }
+
+    try {
+        showFesProgress('Fetching data from all lists...');
+        elements.fesResultsSection.style.display = 'none';
+        elements.fesExportBtn.disabled = true;
+
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tabs[0]) {
+            showFesError('No active tab found');
+            return;
+        }
+
+        // Check if on SharePoint page
+        const currentUrl = tabs[0].url;
+        const isSharePointPage = currentUrl.includes('/sites/') ||
+                                currentUrl.includes('/Lists/') ||
+                                currentUrl.includes('/_layouts/') ||
+                                currentUrl.includes('.aspx');
+
+        if (!isSharePointPage) {
+            showFesError('❌ Not on a SharePoint page.\n\nPlease navigate to a SharePoint site first.');
+            return;
+        }
+
+        // Send message to content script to fetch from all lists
+        const response = await chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'fetchAllListItems',
+            columns: columns,
+            rowLimit: rowLimit
+        });
+
+        if (response && response.success) {
+            fesResults = response.results || [];
+            displayFesResults(fesResults, columns);
+            hideFesProgress();
+            elements.fesExportBtn.disabled = fesResults.length === 0;
+        } else {
+            showFesError(`Failed to fetch data: ${response?.message || 'Unknown error'}`);
+        }
+    } catch (error) {
+        console.error('handleFesFetch error:', error);
+        const errorMsg = error.message.includes('Receiving end does not exist')
+            ? '❌ Content script not loaded.\n\nPlease refresh the SharePoint page (F5) and try again.'
+            : `Error: ${error.message}`;
+        showFesError(errorMsg);
+        hideFesProgress();
+    }
+}
+
+function displayFesResults(results, columns) {
+    if (!results || results.length === 0) {
+        elements.fesResultsSection.style.display = 'block';
+        elements.fesSummaryText.textContent = 'No items found in any lists.';
+        elements.fesResultsThead.innerHTML = '';
+        elements.fesResultsTbody.innerHTML = '<tr><td colspan="1">No items found</td></tr>';
+        return;
+    }
+
+    // Columns to display (including ListName at the beginning)
+    const displayColumns = ['ListName', ...columns];
+
+    // Build header
+    elements.fesResultsThead.innerHTML = '<tr>' +
+        displayColumns.map(col => `<th>${col}</th>`).join('') +
+        '</tr>';
+
+    // Build body
+    elements.fesResultsTbody.innerHTML = results.map(item =>
+        '<tr>' +
+        displayColumns.map(col => `<td>${item[col] !== null && item[col] !== undefined ? item[col] : ''}</td>`).join('') +
+        '</tr>'
+    ).join('');
+
+    // Count unique lists
+    const uniqueLists = [...new Set(results.map(r => r.ListName))];
+
+    // Update summary
+    elements.fesSummaryText.innerHTML = `
+        <strong>📊 Summary:</strong><br>
+        • Total lists searched: ${uniqueLists.length}<br>
+        • Total items fetched: ${results.length}<br>
+        • Columns: ListName, ${columns.join(', ')}
+    `;
+
+    elements.fesResultsSection.style.display = 'block';
+}
+
+function exportFesResults() {
+    if (fesResults.length === 0) {
+        alert('No data to export');
+        return;
+    }
+
+    // Get all columns from the first result item (excluding ListName which we'll add)
+    const dataColumns = Object.keys(fesResults[0]).filter(col => col !== 'ListName');
+    // Columns to export (ListName first, then data columns)
+    const columns = ['ListName', ...dataColumns];
+
+    let csv = '';
+
+    // Header
+    csv += columns.join(',') + '\n';
+
+    // Rows
+    fesResults.forEach(item => {
+        const row = columns.map(col => {
+            const val = item[col] !== undefined ? item[col] : '';
+            return '"' + String(val).replace(/"/g, '""') + '"';
+        });
+        csv += row.join(',') + '\n';
+    });
+
+    // Download
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'all_lists_data.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function showFesProgress(text) {
+    elements.fesProgress.style.display = 'block';
+    elements.fesProgressText.textContent = text;
+}
+
+function hideFesProgress() {
+    elements.fesProgress.style.display = 'none';
+}
+
+function showFesError(message) {
+    hideFesProgress();
     alert('Error: ' + message);
 }

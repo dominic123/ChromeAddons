@@ -79,6 +79,14 @@
         if (data.type === 'SP_FIELD_CREATOR_SEARCH_ALL_LISTS_BY_FIELD') {
             handleSearchAllListsByField(data.fieldName, data.camlQuery, data.rowLimit);
         }
+
+        if (data.type === 'SP_FIELD_CREATOR_FETCH_LIST_ITEMS') {
+            handleFetchListItems(data.listTitle, data.columns, data.rowLimit);
+        }
+
+        if (data.type === 'SP_FIELD_CREATOR_FETCH_ALL_LIST_ITEMS') {
+            handleFetchAllListItems(data.columns, data.rowLimit);
+        }
     });
 
     // Handle connection test
@@ -1084,6 +1092,296 @@
             } catch (error) {
                 console.error('[SP Field Creator] Exception searching all lists:', error);
                 sendResponse('SP_FIELD_CREATOR_SEARCH_ALL_LISTS_BY_FIELD_RESPONSE', {
+                    success: false,
+                    message: 'Error: ' + (error.message || error.toString())
+                });
+            }
+        });
+    }
+
+    // Handle fetch list items
+    function handleFetchListItems(listTitle, columns, rowLimit) {
+        console.log('[SP Field Creator] handleFetchListItems called with listTitle:', listTitle, 'columns:', columns);
+        ensureSPLoaded(function() {
+            try {
+                var context = SP.ClientContext.get_current();
+                var web = context.get_web();
+                var list = web.get_lists().getByTitle(listTitle);
+
+                // Create CAML query to fetch all items
+                var camlQueryObj = new SP.CamlQuery();
+                var viewXml = '<View>';
+
+                // Add row limit if specified
+                if (rowLimit && rowLimit > 0) {
+                    viewXml += '<RowLimit>' + rowLimit + '</RowLimit>';
+                }
+
+                viewXml += '</View>';
+                camlQueryObj.set_viewXml(viewXml);
+
+                var items = list.getItems(camlQueryObj);
+
+                // Load items with specified columns
+                var loadColumns = columns.join(', ');
+                context.load(items, 'Include(' + loadColumns + ')');
+
+                context.executeQueryAsync(
+                    function() {
+                        console.log('[SP Field Creator] Got items successfully!');
+                        var results = [];
+                        var enumerator = items.getEnumerator();
+
+                        while (enumerator.moveNext()) {
+                            var item = enumerator.get_current();
+                            var itemData = {};
+
+                            // Get values for each specified column
+                            for (var i = 0; i < columns.length; i++) {
+                                var columnName = columns[i];
+                                try {
+                                    var value = item.get_item(columnName);
+
+                                    if (value === null) {
+                                        itemData[columnName] = '';
+                                    } else if (typeof value === 'object') {
+                                        // Handle lookup fields
+                                        if (value.get_lookupValue) {
+                                            itemData[columnName] = value.get_lookupValue();
+                                        }
+                                        // Handle user fields
+                                        else if (typeof value.get_title === 'function') {
+                                            itemData[columnName] = value.get_title();
+                                        }
+                                        // Handle Date fields
+                                        else if (value instanceof Date) {
+                                            itemData[columnName] = value.toLocaleString();
+                                        }
+                                        // Handle other objects
+                                        else {
+                                            try {
+                                                itemData[columnName] = JSON.stringify(value);
+                                            } catch (e) {
+                                                itemData[columnName] = '[Object]';
+                                            }
+                                        }
+                                    } else {
+                                        itemData[columnName] = String(value);
+                                    }
+                                } catch (e) {
+                                    // Field doesn't exist or can't be accessed
+                                    itemData[columnName] = '';
+                                }
+                            }
+
+                            results.push(itemData);
+                        }
+
+                        console.log('[SP Field Creator] Fetched', results.length, 'items from', listTitle);
+                        sendResponse('SP_FIELD_CREATOR_FETCH_LIST_ITEMS_RESPONSE', {
+                            success: true,
+                            results: results
+                        });
+                    },
+                    function(sender, args) {
+                        console.error('[SP Field Creator] Error fetching items:', args.get_message());
+                        sendResponse('SP_FIELD_CREATOR_FETCH_LIST_ITEMS_RESPONSE', {
+                            success: false,
+                            message: `Error fetching items: ${args.get_message()}`
+                        });
+                    }
+                );
+            } catch (error) {
+                console.error('[SP Field Creator] Exception fetching items:', error);
+                sendResponse('SP_FIELD_CREATOR_FETCH_LIST_ITEMS_RESPONSE', {
+                    success: false,
+                    message: `Error: ${error.message}`
+                });
+            }
+        });
+    }
+
+    // Handle fetch all list items
+    function handleFetchAllListItems(columns, rowLimit) {
+        console.log('[SP Field Creator] handleFetchAllListItems called with columns:', columns);
+        ensureSPLoaded(function() {
+            try {
+                var context = SP.ClientContext.get_current();
+                var web = context.get_web();
+                var lists = web.get_lists();
+
+                context.load(lists, 'Include(Title,Id)');
+
+                context.executeQueryAsync(
+                    function() {
+                        console.log('[SP Field Creator] Got all lists, count:', lists.get_count());
+                        var allLists = [];
+                        var listEnumerator = lists.getEnumerator();
+
+                        while (listEnumerator.moveNext()) {
+                            var list = listEnumerator.get_current();
+                            allLists.push({
+                                title: list.get_title(),
+                                id: list.get_id()
+                            });
+                        }
+
+                        console.log('[SP Field Creator] Processing', allLists.length, 'lists');
+
+                        // Process each list sequentially
+                        var allResults = [];
+                        var processedCount = 0;
+
+                        function processNextList() {
+                            if (processedCount >= allLists.length) {
+                                // All lists processed
+                                console.log('[SP Field Creator] All lists processed. Total items:', allResults.length);
+                                sendResponse('SP_FIELD_CREATOR_FETCH_ALL_LIST_ITEMS_RESPONSE', {
+                                    success: true,
+                                    results: allResults
+                                });
+                                return;
+                            }
+
+                            var listInfo = allLists[processedCount];
+                            var listTitle = listInfo.title;
+                            console.log('[SP Field Creator] Processing list:', listTitle, '(', processedCount + 1, 'of', allLists.length, ')');
+
+                            // Check if the list has the required columns
+                            var currentList = web.get_lists().getById(listInfo.id);
+                            var fields = currentList.get_fields();
+                            context.load(fields);
+
+                            context.executeQueryAsync(
+                                function() {
+                                    var hasAllColumns = true;
+                                    var fieldEnumerator = fields.getEnumerator();
+
+                                    // Check if all required columns exist
+                                    for (var i = 0; i < columns.length; i++) {
+                                        var columnFound = false;
+                                        while (fieldEnumerator.moveNext()) {
+                                            var field = fieldEnumerator.get_current();
+                                            if (field.get_internalName() === columns[i] || field.get_title() === columns[i]) {
+                                                columnFound = true;
+                                                break;
+                                            }
+                                        }
+                                        fieldEnumerator.reset();
+
+                                        if (!columnFound) {
+                                            hasAllColumns = false;
+                                            break;
+                                        }
+                                    }
+
+                                    if (hasAllColumns) {
+                                        console.log('[SP Field Creator] All columns found in:', listTitle);
+
+                                        // Fetch items from this list
+                                        var camlQueryObj = new SP.CamlQuery();
+                                        var viewXml = '<View>';
+
+                                        if (rowLimit && rowLimit > 0) {
+                                            viewXml += '<RowLimit>' + rowLimit + '</RowLimit>';
+                                        }
+
+                                        viewXml += '</View>';
+                                        camlQueryObj.set_viewXml(viewXml);
+
+                                        var items = currentList.getItems(camlQueryObj);
+
+                                        // Load items with specified columns
+                                        var loadColumns = columns.join(', ');
+                                        context.load(items, 'Include(' + loadColumns + ')');
+
+                                        context.executeQueryAsync(
+                                            function() {
+                                                var enumerator = items.getEnumerator();
+
+                                                while (enumerator.moveNext()) {
+                                                    var item = enumerator.get_current();
+                                                    var itemData = { ListName: listTitle };
+
+                                                    // Get values for each specified column
+                                                    for (var j = 0; j < columns.length; j++) {
+                                                        var columnName = columns[j];
+                                                        try {
+                                                            var value = item.get_item(columnName);
+
+                                                            if (value === null) {
+                                                                itemData[columnName] = '';
+                                                            } else if (typeof value === 'object') {
+                                                                // Handle lookup fields
+                                                                if (value.get_lookupValue) {
+                                                                    itemData[columnName] = value.get_lookupValue();
+                                                                }
+                                                                // Handle user fields
+                                                                else if (typeof value.get_title === 'function') {
+                                                                    itemData[columnName] = value.get_title();
+                                                                }
+                                                                // Handle Date fields
+                                                                else if (value instanceof Date) {
+                                                                    itemData[columnName] = value.toLocaleString();
+                                                                }
+                                                                // Handle other objects
+                                                                else {
+                                                                    try {
+                                                                        itemData[columnName] = JSON.stringify(value);
+                                                                    } catch (e) {
+                                                                        itemData[columnName] = '[Object]';
+                                                                    }
+                                                                }
+                                                            } else {
+                                                                itemData[columnName] = String(value);
+                                                            }
+                                                        } catch (e) {
+                                                            // Field doesn't exist or can't be accessed
+                                                            itemData[columnName] = '';
+                                                        }
+                                                    }
+
+                                                    allResults.push(itemData);
+                                                }
+
+                                                console.log('[SP Field Creator] Fetched', allResults.length - (allResults.length - items.get_count()), 'items from', listTitle);
+                                                processedCount++;
+                                                setTimeout(processNextList, 50); // Small delay between lists
+                                            },
+                                            function(sender, args) {
+                                                console.error('[SP Field Creator] Error fetching items from', listTitle, ':', args.get_message());
+                                                processedCount++;
+                                                setTimeout(processNextList, 50);
+                                            }
+                                        );
+                                    } else {
+                                        console.log('[SP Field Creator] Not all columns found in:', listTitle, '- skipping');
+                                        processedCount++;
+                                        setTimeout(processNextList, 50);
+                                    }
+                                },
+                                function(sender, args) {
+                                    console.error('[SP Field Creator] Error checking fields for', listTitle, ':', args.get_message());
+                                    processedCount++;
+                                    setTimeout(processNextList, 50);
+                                }
+                            );
+                        }
+
+                        // Start processing
+                        processNextList();
+                    },
+                    function(sender, args) {
+                        console.error('[SP Field Creator] Error getting lists:', args.get_message());
+                        sendResponse('SP_FIELD_CREATOR_FETCH_ALL_LIST_ITEMS_RESPONSE', {
+                            success: false,
+                            message: 'Error: ' + args.get_message()
+                        });
+                    }
+                );
+            } catch (error) {
+                console.error('[SP Field Creator] Exception fetching all list items:', error);
+                sendResponse('SP_FIELD_CREATOR_FETCH_ALL_LIST_ITEMS_RESPONSE', {
                     success: false,
                     message: 'Error: ' + (error.message || error.toString())
                 });

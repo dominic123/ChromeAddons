@@ -23,6 +23,7 @@
                 <button id="listDeleterBtn" class="btn btn-danger btn-large">List Deleter</button>
                 <button id="listFilterBtn" class="btn btn-info btn-large">List Filter</button>
                 <button id="listFilterAllBtn" class="btn btn-warning btn-large">List Filter All Lists</button>
+                <button id="fetchEServicesBtn" class="btn btn-success btn-large">Fetch all list items</button>
             </div>
         </div>
 
@@ -517,6 +518,55 @@ Example:
 
                     <!-- Export Button -->
                     <button id="lfa-export-btn" class="btn btn-secondary" style="margin-top:10px;">📥 Export Results to CSV</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fetch E-services View (hidden by default) -->
+        <div id="fetchEServicesView" class="main-content hidden">
+            <header>
+                <h1>Fetch all list items</h1>
+                <p class="subtitle">Fetch and export data from ALL lists with specified columns</p>
+                <button id="backToWelcomeFromFetchEServicesBtn" class="btn-back">← Back</button>
+            </header>
+            <div class="fetch-eservices-content">
+                <div class="sp-deleter-group">
+                    <label class="sp-deleter-label">Columns to Fetch (comma-separated)</label>
+                    <input type="text" id="fes-columns" class="sp-deleter-input" value="WorkflowDecision,Title,Status,ApplicationType" placeholder="e.g., WorkflowDecision,Title,Status,ApplicationType">
+                    <small class="help-text">Enter column names separated by commas. Only items from lists that have ALL these columns will be fetched.</small>
+                </div>
+
+                <div class="sp-deleter-group">
+                    <label class="sp-deleter-label">Row Limit Per List (0 for unlimited)</label>
+                    <input type="number" id="fes-row-limit" class="sp-deleter-input" value="0" min="0">
+                    <small class="help-text">Set to 0 to fetch all items from each list</small>
+                </div>
+
+                <div class="sp-deleter-group">
+                    <button id="fes-fetch-btn" class="btn btn-primary">📥 Fetch Data from All Lists</button>
+                    <button id="fes-export-btn" class="btn btn-success" disabled>📥 Export to CSV</button>
+                </div>
+
+                <!-- Progress -->
+                <div id="fes-progress" style="display:none;padding:10px;background:#f9f9f9;border:1px solid #ddd;border-radius:4px;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div class="spinner" style="width:20px;height:20px;border:2px solid #0078d4;border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;"></div>
+                        <span id="fes-progress-text">Fetching...</span>
+                    </div>
+                </div>
+
+                <!-- Results -->
+                <div id="fes-results-section" class="sp-deleter-output" style="display:none;">
+                    <h3>Results</h3>
+                    <div id="fes-summary" style="padding:10px;background:#e6f2ff;border:1px solid #0078d4;border-radius:4px;margin-bottom:15px;">
+                        <div id="fes-summary-text"></div>
+                    </div>
+                    <div class="table-container">
+                        <table id="fes-results-table">
+                            <thead id="fes-results-thead"></thead>
+                            <tbody id="fes-results-tbody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
