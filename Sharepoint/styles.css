@@ -153,6 +153,11 @@ header h1 {
     padding: 20px;
 }
 
+/* Search List Content */
+.search-list-content {
+    padding: 20px;
+}
+
 .sp-deleter-group {
     margin-bottom: 15px;
 }

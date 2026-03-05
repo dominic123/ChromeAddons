@@ -6,6 +6,9 @@ let filterAdditionalConditions = [];
 let lfaAllResults = []; // Store all results from List Filter All
 let lfaAllLists = []; // Store all lists info
 let fesResults = []; // Store E-services fetch results
+let slResults = []; // Store Search List results
+let slAvailableColumns = []; // Store available columns for Search List
+let slAvailableLists = []; // Store available lists for Search List
 
 // DOM Elements
 const elements = {
@@ -17,7 +20,9 @@ const elements = {
     listFilterView: document.getElementById('listFilterView'),
     listFilterAllView: document.getElementById('listFilterAllView'),
     fetchEServicesView: document.getElementById('fetchEServicesView'),
+    searchListView: document.getElementById('searchListView'),
     fetchEServicesBtn: document.getElementById('fetchEServicesBtn'),
+    searchListBtn: document.getElementById('searchListBtn'),
     openFormBtn: document.getElementById('openFormBtn'),
     checkUncheckBtn: document.getElementById('checkUncheckBtn'),
     listCountBtn: document.getElementById('listCountBtn'),
@@ -31,6 +36,7 @@ const elements = {
     backToWelcomeFromListFilterBtn: document.getElementById('backToWelcomeFromListFilterBtn'),
     backToWelcomeFromListFilterAllBtn: document.getElementById('backToWelcomeFromListFilterAllBtn'),
     backToWelcomeFromFetchEServicesBtn: document.getElementById('backToWelcomeFromFetchEServicesBtn'),
+    backToWelcomeFromSearchListBtn: document.getElementById('backToWelcomeFromSearchListBtn'),
     // Fetch E-services elements
     fesColumns: document.getElementById('fes-columns'),
     fesRowLimit: document.getElementById('fes-row-limit'),
@@ -42,6 +48,26 @@ const elements = {
     fesSummaryText: document.getElementById('fes-summary-text'),
     fesResultsThead: document.getElementById('fes-results-thead'),
     fesResultsTbody: document.getElementById('fes-results-tbody'),
+    // Search List elements
+    slGetLists: document.getElementById('sl-get-lists'),
+    slListDropdown: document.getElementById('sl-list-dropdown'),
+    slGetColumns: document.getElementById('sl-get-columns'),
+    slColumnName: document.getElementById('sl-column-name'),
+    slColumnDropdown: document.getElementById('sl-column-dropdown'),
+    slColumnTypeGroup: document.getElementById('sl-column-type-group'),
+    slColumnType: document.getElementById('sl-column-type'),
+    slOperator: document.getElementById('sl-operator'),
+    slSearchValues: document.getElementById('sl-search-values'),
+    slRowLimit: document.getElementById('sl-row-limit'),
+    slSearchBtn: document.getElementById('sl-search-btn'),
+    slClearBtn: document.getElementById('sl-clear-btn'),
+    slProgress: document.getElementById('sl-progress'),
+    slProgressText: document.getElementById('sl-progress-text'),
+    slResultsSection: document.getElementById('sl-results-section'),
+    slSummaryText: document.getElementById('sl-summary-text'),
+    slResultsThead: document.getElementById('sl-results-thead'),
+    slResultsTbody: document.getElementById('sl-results-tbody'),
+    slExportBtn: document.getElementById('sl-export-btn'), // Note: ID has hyphen in HTML
     // List Filter elements
     lfGetLists: document.getElementById('lf-get-lists'),
     lfListDropdown: document.getElementById('lf-list-dropdown'),
@@ -368,6 +394,41 @@ function setupEventListeners() {
     // Fetch E-services - Export button
     if (elements.fesExportBtn) {
         elements.fesExportBtn.addEventListener('click', exportFesResults);
+    }
+
+    // Search List button
+    if (elements.searchListBtn) {
+        elements.searchListBtn.addEventListener('click', openSearchListView);
+    }
+
+    // Back to Welcome button (from Search List view)
+    if (elements.backToWelcomeFromSearchListBtn) {
+        elements.backToWelcomeFromSearchListBtn.addEventListener('click', closeSearchListView);
+    }
+
+    // Search List - Get Lists
+    if (elements.slGetLists) {
+        elements.slGetLists.addEventListener('click', handleSlGetLists);
+    }
+
+    // Search List - Get Columns
+    if (elements.slGetColumns) {
+        elements.slGetColumns.addEventListener('click', handleSlGetColumns);
+    }
+
+    // Search List - Search button
+    if (elements.slSearchBtn) {
+        elements.slSearchBtn.addEventListener('click', handleSlSearch);
+    }
+
+    // Search List - Clear button
+    if (elements.slClearBtn) {
+        elements.slClearBtn.addEventListener('click', clearSlResults);
+    }
+
+    // Search List - Export button
+    if (elements.slExportBtn) {
+        elements.slExportBtn.addEventListener('click', exportSlResults);
     }
 
     // Connect button
@@ -1019,6 +1080,20 @@ function openFetchEServicesView() {
 function closeFetchEServicesView() {
     if (elements.welcomeScreen && elements.fetchEServicesView) {
         elements.fetchEServicesView.classList.add('hidden');
+        elements.welcomeScreen.classList.remove('hidden');
+    }
+}
+
+function openSearchListView() {
+    if (elements.welcomeScreen && elements.searchListView) {
+        elements.welcomeScreen.classList.add('hidden');
+        elements.searchListView.classList.remove('hidden');
+    }
+}
+
+function closeSearchListView() {
+    if (elements.welcomeScreen && elements.searchListView) {
+        elements.searchListView.classList.add('hidden');
         elements.welcomeScreen.classList.remove('hidden');
     }
 }
@@ -2581,4 +2656,422 @@ function hideFesProgress() {
 function showFesError(message) {
     hideFesProgress();
     alert('Error: ' + message);
+}
+
+// ============================================================================
+// Search List Functions
+// ============================================================================
+
+// Handle Get Lists for Search List
+async function handleSlGetLists() {
+    try {
+        showSlOutput('Loading lists...', 'info');
+
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tabs[0]) {
+            showSlOutput('No active tab found', 'error');
+            return;
+        }
+
+        const response = await chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'getAllLists'
+        });
+
+        if (response && response.success) {
+            slAvailableLists = response.lists || [];
+            populateSlListDropdown(slAvailableLists);
+            showSlOutput(`Found ${slAvailableLists.length} lists`, 'success');
+        } else {
+            showSlOutput(`Failed to get lists: ${response?.message || 'Unknown error'}`, 'error');
+        }
+    } catch (error) {
+        console.error('handleSlGetLists error:', error);
+        const errorMsg = error.message.includes('Receiving end does not exist')
+            ? 'Content script not loaded.\n\nPlease refresh the SharePoint page (F5) and try again.'
+            : `Error: ${error.message}`;
+        showSlOutput(errorMsg, 'error');
+    }
+}
+
+function populateSlListDropdown(lists) {
+    elements.slListDropdown.innerHTML = '<option value="">-- Select a list --</option>';
+    lists.forEach(list => {
+        const option = document.createElement('option');
+        option.value = list.title;
+        option.textContent = list.title;
+        elements.slListDropdown.appendChild(option);
+    });
+    elements.slListDropdown.style.display = 'block';
+}
+
+// Handle Get Columns for Search List
+async function handleSlGetColumns() {
+    const listTitle = elements.slListDropdown.value.trim();
+    if (!listTitle) {
+        showSlOutput('Please select a list first', 'error');
+        return;
+    }
+
+    try {
+        showSlOutput('Loading columns...', 'info');
+
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tabs[0]) {
+            showSlOutput('No active tab found', 'error');
+            return;
+        }
+
+        const response = await chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'getListFields',
+            listTitle: listTitle
+        });
+
+        if (response && response.success) {
+            slAvailableColumns = response.fields || [];
+            populateSlColumnDropdown(slAvailableColumns);
+            showSlOutput(`Found ${slAvailableColumns.length} columns`, 'success');
+        } else {
+            showSlOutput(`Failed to get columns: ${response?.message || 'Unknown error'}`, 'error');
+        }
+    } catch (error) {
+        console.error('handleSlGetColumns error:', error);
+        const errorMsg = error.message.includes('Receiving end does not exist')
+            ? 'Content script not loaded.\n\nPlease refresh the SharePoint page (F5) and try again.'
+            : `Error: ${error.message}`;
+        showSlOutput(errorMsg, 'error');
+    }
+}
+
+function populateSlColumnDropdown(fields) {
+    elements.slColumnDropdown.innerHTML = '<option value="">-- Select a column --</option>';
+    fields.forEach(field => {
+        const option = document.createElement('option');
+        option.value = field.internalName;
+        option.textContent = `${field.title} (${field.type})`;
+        option.dataset.type = field.type;
+        elements.slColumnDropdown.appendChild(option);
+    });
+    elements.slColumnDropdown.style.display = 'block';
+}
+
+// Handle column dropdown selection change
+elements.slColumnDropdown.addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    if (selectedOption.value) {
+        elements.slColumnTypeGroup.style.display = 'block';
+        elements.slColumnType.value = selectedOption.dataset.type;
+        elements.slColumnName.value = selectedOption.value;
+    } else {
+        elements.slColumnTypeGroup.style.display = 'none';
+    }
+});
+
+// Handle Search List Search
+async function handleSlSearch() {
+    const listTitle = elements.slListDropdown.value.trim();
+    const columnName = elements.slColumnName.value.trim();
+    const operator = elements.slOperator.value;
+    const searchValues = elements.slSearchValues.value.trim();
+    const rowLimit = parseInt(elements.slRowLimit.value) || 0;
+
+    if (!listTitle) {
+        showSlOutput('Please select a list', 'error');
+        return;
+    }
+
+    if (!columnName) {
+        showSlOutput('Please enter a column name', 'error');
+        return;
+    }
+
+    if (!searchValues) {
+        showSlOutput('Please enter search values', 'error');
+        return;
+    }
+
+    // Parse values from both commas and newlines
+    const values = searchValues
+        .split(/[\n,]+/)  // Split by newline or comma
+        .map(v => v.trim())
+        .filter(v => v.length > 0);
+
+    if (values.length === 0) {
+        showSlOutput('Please enter at least one search value', 'error');
+        return;
+    }
+
+    try {
+        showSlProgress('Searching...');
+        elements.slResultsSection.style.display = 'none';
+
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tabs[0]) {
+            showSlError('No active tab found');
+            return;
+        }
+
+        // Build CAML query with OR conditions for multiple values
+        const camlQuery = buildSlCAML(columnName, operator, values);
+
+        const response = await chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'filterListItems',
+            listTitle: listTitle,
+            camlQuery: camlQuery,
+            rowLimit: rowLimit
+        });
+
+        if (response && response.success) {
+            slResults = response.results || [];
+            displaySlResults(slResults, values, operator);
+            hideSlProgress();
+        } else {
+            showSlError(`Search failed: ${response?.message || 'Unknown error'}`);
+        }
+    } catch (error) {
+        console.error('handleSlSearch error:', error);
+        const errorMsg = error.message.includes('Receiving end does not exist')
+            ? 'Content script not loaded.\n\nPlease refresh the SharePoint page (F5) and try again.'
+            : `Error: ${error.message}`;
+        showSlError(errorMsg);
+        hideSlProgress();
+    }
+}
+
+function buildSlCAML(fieldName, operator, values) {
+    // Build conditions for multiple values using the selected operator
+    const conditions = values.map(v => {
+        if (operator === 'Contains') {
+            return `<Contains><FieldRef Name='${fieldName}'/><Value Type='Text'>${escapeXml(v)}</Value></Contains>`;
+        } else {
+            return `<Eq><FieldRef Name='${fieldName}'/><Value Type='Text'>${escapeXml(v)}</Value></Eq>`;
+        }
+    });
+
+    let whereClause = '';
+    if (conditions.length === 1) {
+        whereClause = conditions[0];
+    } else {
+        // Build nested OR structure
+        while (conditions.length > 1) {
+            const first = conditions.shift();
+            const second = conditions.shift();
+            conditions.unshift(`<Or>${first}${second}</Or>`);
+        }
+        whereClause = conditions[0];
+    }
+
+    const rowLimit = elements.slRowLimit.value || '100';
+
+    return `<View><Query><Where>${whereClause}</Where></Query><RowLimit>${rowLimit}</RowLimit></View>`;
+}
+
+function displaySlResults(results, searchValues, operator) {
+    if (!results || results.length === 0) {
+        elements.slResultsSection.style.display = 'block';
+        elements.slSummaryText.textContent = `No items found matching any of the values: ${searchValues.join(', ')}`;
+        elements.slResultsThead.innerHTML = '';
+        elements.slResultsTbody.innerHTML = '<tr><td colspan="100%">No matching items found</td></tr>';
+        return;
+    }
+
+    // Get all unique columns from results
+    const columns = Object.keys(results[0]);
+
+    // Build header
+    elements.slResultsThead.innerHTML = '<tr>' +
+        columns.map(col => `<th>${col}</th>`).join('') +
+        '</tr>';
+
+    // Build body
+    elements.slResultsTbody.innerHTML = results.map(item =>
+        '<tr>' +
+        columns.map(col => `<td>${item[col] !== null && item[col] !== undefined ? item[col] : ''}</td>`).join('') +
+        '</tr>'
+    ).join('');
+
+    // Update summary
+    const operatorText = operator === 'Contains' ? 'Contains' : 'Equals (=)';
+    elements.slSummaryText.innerHTML = `
+        <strong>📊 Summary:</strong><br>
+        • Search operator: ${operatorText}<br>
+        • Search values: ${searchValues.join(', ')}<br>
+        • Total matching items: ${results.length}
+    `;
+
+    elements.slResultsSection.style.display = 'block';
+}
+
+function clearSlResults() {
+    elements.slListDropdown.innerHTML = '<option value="">-- Select a list --</option>';
+    elements.slListDropdown.style.display = 'none';
+    elements.slColumnName.value = '';
+    elements.slColumnDropdown.innerHTML = '<option value="">-- Select a column --</option>';
+    elements.slColumnDropdown.style.display = 'none';
+    elements.slColumnTypeGroup.style.display = 'none';
+    elements.slOperator.value = 'Eq';
+    elements.slSearchValues.value = '';
+    elements.slRowLimit.value = '100';
+    elements.slResultsSection.style.display = 'none';
+    slResults = [];
+    slAvailableColumns = [];
+    slAvailableLists = [];
+}
+
+function exportSlResults() {
+    if (slResults.length === 0) {
+        alert('No results to export');
+        return;
+    }
+
+    // Get search values from textarea (support both commas and newlines)
+    const searchValuesText = elements.slSearchValues.value.trim();
+    const searchValues = searchValuesText.split(/[\n,]+/).map(v => v.trim()).filter(v => v.length > 0);
+
+    // Get operator
+    const operator = elements.slOperator.value;
+
+    // Get all columns from results
+    const columns = Object.keys(slResults[0]);
+
+    // Determine which values were found and which were missing
+    const foundValues = new Set();
+    slResults.forEach(item => {
+        // Check each column to see if it contains any of the search values
+        columns.forEach(col => {
+            const val = String(item[col] || '').toLowerCase();
+            searchValues.forEach(searchVal => {
+                if (val.includes(searchVal.toLowerCase())) {
+                    foundValues.add(searchVal);
+                }
+            });
+        });
+    });
+
+    const missingValues = searchValues.filter(val => !foundValues.has(val));
+
+    // Create HTML table for Excel
+    let html = '<table>';
+    
+    // Header row
+    html += '<thead><tr>';
+    columns.forEach(col => {
+        html += `<th>${col}</th>`;
+    });
+    html += '</tr></thead>';
+    
+    // Data rows
+    html += '<tbody>';
+    slResults.forEach(item => {
+        html += '<tr>';
+        columns.forEach(col => {
+            const val = item[col] !== undefined ? item[col] : '';
+            html += `<td>${val}</td>`;
+        });
+        html += '</tr>';
+    });
+    html += '</tbody>';
+    
+    html += '</table>';
+
+    // Add summary section below the table
+    html += '<div style="margin-top: 20px; padding: 10px; background-color: #f9f9f9; border: 1px solid #ddd;">';
+    html += '<h3 style="margin-top: 0;">Search Summary</h3>';
+    html += '<table style="width: 100%; border-collapse: collapse;">';
+    
+    // Search operator section
+    const operatorText = operator === 'Contains' ? 'Contains' : 'Equals (=)';
+    html += '<tr><td style="padding: 8px; background-color: #fff3e0; border: 1px solid #ffb74d; font-weight: bold;">Search Operator</td>';
+    html += `<td style="padding: 8px;">${operatorText}</td></tr>`;
+    
+    // Found values section
+    html += '<tr><td style="padding: 8px; background-color: #e8f5e9; border: 1px solid #a5d6a7; font-weight: bold;">Values Found</td>';
+    html += `<td style="padding: 8px;">${foundValues.size > 0 ? foundValues.size + ' (' + Array.from(foundValues).join(', ') + ')' : '0 (None)'}</td></tr>`;
+    
+    // Missing values section
+    html += '<tr><td style="padding: 8px; background-color: #ffebee; border: 1px solid #ef9a9a; font-weight: bold;">Values Not Found</td>';
+    html += `<td style="padding: 8px;">${missingValues.length > 0 ? missingValues.length + ' (' + missingValues.join(', ') + ')' : '0 (None)'}</td></tr>`;
+    
+    // Total results section
+    html += '<tr><td style="padding: 8px; background-color: #e3f2fd; border: 1px solid #90caf9; font-weight: bold;">Total Results</td>';
+    html += `<td style="padding: 8px;">${slResults.length}</td></tr>`;
+    
+    html += '</table></div>';
+
+    // Create Excel-compatible HTML with proper headers
+    const excelHtml = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office"
+              xmlns:x="urn:schemas-microsoft-com:office:excel"
+              xmlns="http://www.w3.org/TR/REC-html401/1999/html40">
+        <head>
+            <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+            <meta name="ProgId" content="Excel.Sheet">
+            <style>
+                table {
+                    border-collapse: collapse;
+                    border: 1px solid #ccc;
+                }
+                th, td {
+                    border: 1px solid #ccc;
+                    padding: 8px;
+                    text-align: left;
+                }
+                th {
+                    background-color: #4CAF50;
+                    color: white;
+                    font-weight: bold;
+                }
+            </style>
+        </head>
+        <body>
+            ${html}
+        </body>
+        </html>
+    `;
+
+    // Download as Excel file
+    const blob = new Blob([excelHtml], { type: 'application/vnd.ms-excel' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'search_list_results.xls';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function showSlProgress(text) {
+    elements.slProgress.style.display = 'block';
+    elements.slProgressText.textContent = text;
+}
+
+function hideSlProgress() {
+    elements.slProgress.style.display = 'none';
+}
+
+function showSlError(message) {
+    hideSlProgress();
+    alert('Error: ' + message);
+}
+
+function showSlOutput(message, type = 'info') {
+    const outputDiv = document.createElement('div');
+    outputDiv.className = `sl-output-message`;
+    outputDiv.style.cssText = `
+        margin-top: 10px;
+        padding: 10px;
+        border-radius: 4px;
+        background: ${type === 'error' ? '#fde8e8' : type === 'success' ? '#e6f4ea' : '#e8f0fe'};
+        border: 1px solid ${type === 'error' ? '#d13438' : type === 'success' ? '#107c10' : '#0078d4'};
+        color: ${type === 'error' ? '#d13438' : type === 'success' ? '#107c10' : '#0078d4'};
+        white-space: pre-wrap;
+    `;
+    outputDiv.textContent = message;
+
+    // Remove previous messages
+    const prevMessages = document.querySelectorAll('.sl-output-message');
+    prevMessages.forEach(msg => msg.remove());
+
+    // Insert before results section
+    if (elements.slResultsSection && elements.slResultsSection.parentNode) {
+        elements.slResultsSection.parentNode.insertBefore(outputDiv, elements.slResultsSection);
+    }
 }
