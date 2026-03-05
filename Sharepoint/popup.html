@@ -533,7 +533,7 @@ Example:
             <div class="fetch-eservices-content">
                 <div class="sp-deleter-group">
                     <label class="sp-deleter-label">Columns to Fetch (comma-separated)</label>
-                    <input type="text" id="fes-columns" class="sp-deleter-input" value="WorkflowDecision,Title,Status,ApplicationType" placeholder="e.g., WorkflowDecision,Title,Status,ApplicationType">
+                    <input type="text" id="fes-columns" class="sp-deleter-input" value="WorkflowDecision,Title,Status,MeterAndCount,ApplicationType" placeholder="e.g., WorkflowDecision,Title,Status,ApplicationType">
                     <small class="help-text">Enter column names separated by commas. Only items from lists that have ALL these columns will be fetched.</small>
                 </div>
 
@@ -576,9 +576,69 @@ Example:
         <div id="searchListView" class="main-content hidden">
             <header>
                 <h1>Search List</h1>
-                <p class="subtitle">Bulk search for comma-separated values in a specific field</p>
+                <p class="subtitle">Bulk search for values in a specific SharePoint field</p>
                 <button id="backToWelcomeFromSearchListBtn" class="btn-back">← Back</button>
             </header>
+
+            <!-- Read More User Guide -->
+            <div class="sp-deleter-group" style="background:#f0f6fc;padding:10px;border-radius:4px;border:1px solid #0078d4;margin-bottom:15px;">
+                <details>
+                    <summary style="cursor:pointer;font-weight:600;color:#0078d4;">📖 Read More - User Guide</summary>
+                    <div style="margin-top:10px;padding:10px;background:#fff;border:1px solid #ddd;border-radius:4px;font-size:13px;line-height:1.5;">
+                        <h4 style="margin:0 0 10px 0;color:#333;border-bottom:1px solid #eee;padding-bottom:5px;">How to Use Search List</h4>
+                        <ol style="margin:0;padding-left:20px;">
+                            <li><strong>Select a List:</strong> Click "Get All Lists" to fetch available lists, then select the list you want to search.</li>
+                            <li><strong>Choose a Column:</strong> Click "Get Columns" to see all available columns, then select the field to search in.</li>
+                            <li><strong>Select Comparison Operator:</strong>
+                                <ul style="margin:5px 0;padding-left:20px;">
+                                    <li><strong>Equals (=)</strong>: Finds items where the field exactly matches the search value (exact match).</li>
+                                    <li><strong>Contains</strong>: Finds items where the field includes the search value anywhere (partial match).</li>
+                                </ul>
+                            </li>
+                            <li><strong>Enter Search Values:</strong> You can enter multiple values in two ways:
+                                <ul style="margin:5px 0;padding-left:20px;">
+                                    <li><strong>Comma-separated:</strong> <code>Value1, Value2, Value3</code></li>
+                                    <li><strong>Multiline:</strong> Put each value on a new line</li>
+                                    <li><strong>Mixed:</strong> You can use both commas and newlines together</li>
+                                </ul>
+                                The search will find items matching <strong>ANY</strong> of the values (OR logic).
+                            </li>
+                            <li><strong>Set Row Limit:</strong> Optional - limit results to prevent large datasets. Set to 0 for unlimited.</li>
+                            <li><strong>Click Search:</strong> View results in the table below.</li>
+                        </ol>
+
+                        <h4 style="margin:15px 0 10px 0;color:#333;border-bottom:1px solid #eee;padding-bottom:5px;">Examples</h4>
+                        <div style="background:#f9f9f9;padding:10px;border-radius:4px;border-left:3px solid #4CAF50;">
+                            <p style="margin:0 0 8px 0;"><strong>Example 1: Search for specific statuses</strong></p>
+                            <p style="margin:0 0 8px 0;">Column: <code>Status</code><br>
+                            Operator: <code>Equals (=)</code><br>
+                            Values: <code>Completed, In Progress, Pending</code></p>
+                            <p style="margin:0 0 8px 0;">Result: Finds items where Status is exactly "Completed" OR "In Progress" OR "Pending"</p>
+                        </div>
+
+                        <div style="background:#f9f9f9;padding:10px;border-radius:4px;border-left:3px solid #2196F3;margin-top:10px;">
+                            <p style="margin:0 0 8px 0;"><strong>Example 2: Search for partial matches</strong></p>
+                            <p style="margin:0 0 8px 0;">Column: <code>Title</code><br>
+                            Operator: <code>Contains</code><br>
+                            Values:<br>
+                            <code>Project</code><br>
+                            <code>Task</code><br>
+                            <code>Report</code></p>
+                            <p style="margin:0;">Result: Finds items where Title contains "Project" OR "Task" OR "Report" anywhere in the text</p>
+                        </div>
+
+                        <h4 style="margin:15px 0 10px 0;color:#333;border-bottom:1px solid #eee;padding-bottom:5px;">Tips</h4>
+                        <ul style="margin:0;padding-left:20px;">
+                            <li>Use <strong>Contains</strong> for flexible searches when you're not sure of exact values.</li>
+                            <li>Use <strong>Equals (=)</strong> for precise searches when you need exact matches.</li>
+                            <li>Values are case-insensitive in SharePoint searches.</li>
+                            <li>Click "Export Results to CSV" to save your findings for further analysis.</li>
+                            <li>Clear the form to start a new search with different parameters.</li>
+                        </ul>
+                    </div>
+                </details>
+            </div>
+
             <div class="search-list-content">
                 <!-- List Selection -->
                 <div class="sp-deleter-group">
