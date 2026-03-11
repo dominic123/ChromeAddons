@@ -23,6 +23,7 @@
                 <button id="listDeleterBtn" class="btn btn-danger btn-large">List Deleter</button>
                 <button id="listFilterBtn" class="btn btn-info btn-large">List Filter</button>
                 <button id="listFilterAllBtn" class="btn btn-warning btn-large">List Filter All Lists</button>
+                <button id="listFilterSpecificBtn" class="btn btn-primary btn-large">List Filter specific list</button>
                 <button id="fetchEServicesBtn" class="btn btn-success btn-large">Fetch all list items</button>
                 <button id="searchListBtn" class="btn btn-primary btn-large">Search List</button>
             </div>
@@ -519,6 +520,109 @@ Example:
 
                     <!-- Export Button -->
                     <button id="lfa-export-btn" class="btn btn-secondary" style="margin-top:10px;">📥 Export Results to CSV</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- List Filter Specific List View (hidden by default) -->
+        <div id="listFilterSpecificView" class="main-content hidden">
+            <header>
+                <h1>List Filter specific list</h1>
+                <p class="subtitle">Filter a specific SharePoint list by column and value</p>
+                <button id="backToWelcomeFromListFilterSpecificBtn" class="btn-back">← Back</button>
+            </header>
+            <div class="list-filter-specific-content">
+                <!-- List Selection -->
+                <div class="sp-deleter-group">
+                    <label class="sp-deleter-label">
+                        <span style="display:flex;justify-content:space-between;align-items:center;">
+                            <span>Select List</span>
+                            <button type="button" id="lfs-get-lists" class="btn" style="width:auto;padding:4px 12px;font-size:12px;background:#0078d4;color:white;margin:0;">📋 Get All Lists</button>
+                        </span>
+                    </label>
+                    <select id="lfs-list-dropdown" class="sp-deleter-select">
+                        <option value="">-- Select a list --</option>
+                    </select>
+                </div>
+
+                <!-- Column Selection -->
+                <div class="sp-deleter-group">
+                    <label class="sp-deleter-label">
+                        <span style="display:flex;justify-content:space-between;align-items:center;">
+                            <span>Column / Field Name</span>
+                            <button type="button" id="lfs-get-columns" class="btn" style="width:auto;padding:4px 12px;font-size:12px;background:#0078d4;color:white;margin:0;">📋 Get Columns</button>
+                        </span>
+                    </label>
+                    <input type="text" id="lfs-column-name" class="sp-deleter-input" placeholder="Enter column name (e.g., Status, Title)">
+                    <select id="lfs-column-dropdown" class="sp-deleter-select" style="display:none;margin-top:5px;">
+                        <option value="">-- Select a column --</option>
+                    </select>
+                </div>
+
+                <!-- Column Type Display -->
+                <div class="sp-deleter-group" id="lfs-column-type-group" style="display:none;">
+                    <label class="sp-deleter-label">Column Type</label>
+                    <input type="text" id="lfs-column-type" class="sp-deleter-input" readonly style="background:#f5f5f5;">
+                </div>
+
+                <!-- Filter Operator -->
+                <div class="sp-deleter-group">
+                    <label class="sp-deleter-label">Filter Operator</label>
+                    <select id="lfs-operator" class="sp-deleter-select">
+                        <option value="Eq">Equals (=)</option>
+                        <option value="Neq">Not Equals (!=)</option>
+                        <option value="Contains">Contains</option>
+                        <option value="BeginsWith">Begins With</option>
+                        <option value="Lt">Less Than (&lt;)</option>
+                        <option value="Le">Less Than Equal (&lt;=)</option>
+                        <option value="Gt">Greater Than (&gt;)</option>
+                        <option value="Ge">Greater Than Equal (&gt;=)</option>
+                        <option value="IsNull">Is Null</option>
+                        <option value="IsNotNull">Is Not Null</option>
+                        <option value="In">In (comma-separated values)</option>
+                    </select>
+                </div>
+
+                <!-- Filter Value -->
+                <div class="sp-deleter-group">
+                    <label class="sp-deleter-label">Filter Value</label>
+                    <input type="text" id="lfs-value" class="sp-deleter-input" placeholder="Enter value to filter by...">
+                    <small class="help-text">For 'In' operator, use comma-separated values (e.g., Value1,Value2,Value3)</small>
+                </div>
+
+                <!-- Row Limit -->
+                <div class="sp-deleter-group">
+                    <label class="sp-deleter-label">Row Limit (0 for unlimited)</label>
+                    <input type="number" id="lfs-row-limit" class="sp-deleter-input" value="100" min="0">
+                </div>
+
+                <!-- Actions -->
+                <div class="sp-deleter-group">
+                    <button id="lfs-search-btn" class="btn btn-primary">🔍 Search List</button>
+                    <button id="lfs-clear-btn" class="btn btn-secondary">Clear</button>
+                </div>
+
+                <!-- Progress -->
+                <div id="lfs-progress" style="display:none;padding:10px;background:#f9f9f9;border:1px solid #ddd;border-radius:4px;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <div class="spinner" style="width:20px;height:20px;border:2px solid #0078d4;border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;"></div>
+                        <span id="lfs-progress-text">Searching...</span>
+                    </div>
+                </div>
+
+                <!-- Results Section -->
+                <div id="lfs-results-section" class="sp-deleter-output" style="display:none;">
+                    <h3>Search Results</h3>
+                    <div id="lfs-summary" style="padding:10px;background:#e6f2ff;border:1px solid #0078d4;border-radius:4px;margin-bottom:15px;">
+                        <div id="lfs-summary-text"></div>
+                    </div>
+                    <div class="table-container">
+                        <table id="lfs-results-table">
+                            <thead id="lfs-results-thead"></thead>
+                            <tbody id="lfs-results-tbody"></tbody>
+                        </table>
+                    </div>
+                    <button id="lfs-export-btn" class="btn btn-secondary" style="margin-top:10px;">📥 Export Results to CSV</button>
                 </div>
             </div>
         </div>

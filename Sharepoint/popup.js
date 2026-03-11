@@ -9,6 +9,9 @@ let fesResults = []; // Store E-services fetch results
 let slResults = []; // Store Search List results
 let slAvailableColumns = []; // Store available columns for Search List
 let slAvailableLists = []; // Store available lists for Search List
+let lfsResults = []; // Store List Filter Specific results
+let lfsAvailableColumns = []; // Store available columns for List Filter Specific
+let lfsAvailableLists = []; // Store available lists for List Filter Specific
 
 // DOM Elements
 const elements = {
@@ -19,6 +22,7 @@ const elements = {
     listDeleterView: document.getElementById('listDeleterView'),
     listFilterView: document.getElementById('listFilterView'),
     listFilterAllView: document.getElementById('listFilterAllView'),
+    listFilterSpecificView: document.getElementById('listFilterSpecificView'),
     fetchEServicesView: document.getElementById('fetchEServicesView'),
     searchListView: document.getElementById('searchListView'),
     fetchEServicesBtn: document.getElementById('fetchEServicesBtn'),
@@ -29,12 +33,14 @@ const elements = {
     listDeleterBtn: document.getElementById('listDeleterBtn'),
     listFilterBtn: document.getElementById('listFilterBtn'),
     listFilterAllBtn: document.getElementById('listFilterAllBtn'),
+    listFilterSpecificBtn: document.getElementById('listFilterSpecificBtn'),
     backBtn: document.getElementById('backBtn'),
     backToWelcomeBtn: document.getElementById('backToWelcomeBtn'),
     backToWelcomeFromListCountBtn: document.getElementById('backToWelcomeFromListCountBtn'),
     backToWelcomeFromListDeleterBtn: document.getElementById('backToWelcomeFromListDeleterBtn'),
     backToWelcomeFromListFilterBtn: document.getElementById('backToWelcomeFromListFilterBtn'),
     backToWelcomeFromListFilterAllBtn: document.getElementById('backToWelcomeFromListFilterAllBtn'),
+    backToWelcomeFromListFilterSpecificBtn: document.getElementById('backToWelcomeFromListFilterSpecificBtn'),
     backToWelcomeFromFetchEServicesBtn: document.getElementById('backToWelcomeFromFetchEServicesBtn'),
     backToWelcomeFromSearchListBtn: document.getElementById('backToWelcomeFromSearchListBtn'),
     // Fetch E-services elements
@@ -105,6 +111,26 @@ const elements = {
     lfaResultsThead: document.getElementById('lfa-results-thead'),
     lfaResultsTbody: document.getElementById('lfa-results-tbody'),
     lfaExportBtn: document.getElementById('lfa-export-btn'),
+    // List Filter Specific elements
+    lfsGetLists: document.getElementById('lfs-get-lists'),
+    lfsListDropdown: document.getElementById('lfs-list-dropdown'),
+    lfsGetColumns: document.getElementById('lfs-get-columns'),
+    lfsColumnName: document.getElementById('lfs-column-name'),
+    lfsColumnDropdown: document.getElementById('lfs-column-dropdown'),
+    lfsColumnTypeGroup: document.getElementById('lfs-column-type-group'),
+    lfsColumnType: document.getElementById('lfs-column-type'),
+    lfsOperator: document.getElementById('lfs-operator'),
+    lfsValue: document.getElementById('lfs-value'),
+    lfsRowLimit: document.getElementById('lfs-row-limit'),
+    lfsSearchBtn: document.getElementById('lfs-search-btn'),
+    lfsClearBtn: document.getElementById('lfs-clear-btn'),
+    lfsProgress: document.getElementById('lfs-progress'),
+    lfsProgressText: document.getElementById('lfs-progress-text'),
+    lfsResultsSection: document.getElementById('lfs-results-section'),
+    lfsSummaryText: document.getElementById('lfs-summary-text'),
+    lfsResultsThead: document.getElementById('lfs-results-thead'),
+    lfsResultsTbody: document.getElementById('lfs-results-tbody'),
+    lfsExportBtn: document.getElementById('lfs-export-btn'),
     checkAllBtn: document.getElementById('checkAllBtn'),
     uncheckAllBtn: document.getElementById('uncheckAllBtn'),
     checkboxResult: document.getElementById('checkboxResult'),
@@ -374,6 +400,41 @@ function setupEventListeners() {
     // List Filter All - Export
     if (elements.lfaExportBtn) {
         elements.lfaExportBtn.addEventListener('click', exportLfaResults);
+    }
+
+    // List Filter Specific button
+    if (elements.listFilterSpecificBtn) {
+        elements.listFilterSpecificBtn.addEventListener('click', openListFilterSpecificView);
+    }
+
+    // Back to Welcome button (from List Filter Specific view)
+    if (elements.backToWelcomeFromListFilterSpecificBtn) {
+        elements.backToWelcomeFromListFilterSpecificBtn.addEventListener('click', closeListFilterSpecificView);
+    }
+
+    // List Filter Specific - Get Lists
+    if (elements.lfsGetLists) {
+        elements.lfsGetLists.addEventListener('click', handleLfsGetLists);
+    }
+
+    // List Filter Specific - Get Columns
+    if (elements.lfsGetColumns) {
+        elements.lfsGetColumns.addEventListener('click', handleLfsGetColumns);
+    }
+
+    // List Filter Specific - Search button
+    if (elements.lfsSearchBtn) {
+        elements.lfsSearchBtn.addEventListener('click', handleLfsSearch);
+    }
+
+    // List Filter Specific - Clear button
+    if (elements.lfsClearBtn) {
+        elements.lfsClearBtn.addEventListener('click', clearLfsResults);
+    }
+
+    // List Filter Specific - Export button
+    if (elements.lfsExportBtn) {
+        elements.lfsExportBtn.addEventListener('click', exportLfsResults);
     }
 
     // Fetch E-services button
@@ -1066,6 +1127,20 @@ function openListFilterAllView() {
 function closeListFilterAllView() {
     if (elements.welcomeScreen && elements.listFilterAllView) {
         elements.listFilterAllView.classList.add('hidden');
+        elements.welcomeScreen.classList.remove('hidden');
+    }
+}
+
+function openListFilterSpecificView() {
+    if (elements.welcomeScreen && elements.listFilterSpecificView) {
+        elements.welcomeScreen.classList.add('hidden');
+        elements.listFilterSpecificView.classList.remove('hidden');
+    }
+}
+
+function closeListFilterSpecificView() {
+    if (elements.welcomeScreen && elements.listFilterSpecificView) {
+        elements.listFilterSpecificView.classList.add('hidden');
         elements.welcomeScreen.classList.remove('hidden');
     }
 }
@@ -2765,6 +2840,297 @@ elements.slColumnDropdown.addEventListener('change', function() {
         elements.slColumnTypeGroup.style.display = 'none';
     }
 });
+
+// Handle List Filter Specific Search
+async function handleLfsSearch() {
+    const listTitle = elements.lfsListDropdown.value.trim();
+    const columnName = elements.lfsColumnName.value.trim();
+    const operator = elements.lfsOperator.value;
+    const value = elements.lfsValue.value.trim();
+    const rowLimit = parseInt(elements.lfsRowLimit.value) || 0;
+
+    if (!listTitle) {
+        showLfsOutput('Please select a list', 'error');
+        return;
+    }
+
+    if (!columnName) {
+        showLfsOutput('Please enter a column name', 'error');
+        return;
+    }
+
+    // Build CAML query
+    const camlQuery = buildLfsCAML(columnName, operator, value);
+
+    try {
+        showLfsProgress('Searching list...');
+        elements.lfsResultsSection.style.display = 'none';
+
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tabs[0]) {
+            showLfsError('No active tab found');
+            return;
+        }
+
+        const response = await chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'filterListItems',
+            listTitle: listTitle,
+            camlQuery: camlQuery,
+            rowLimit: rowLimit
+        });
+
+        if (response && response.success) {
+            lfsResults = response.results || [];
+            displayLfsResults(lfsResults);
+            showLfsOutput(`Found ${lfsResults.length} items`, 'success');
+            hideLfsProgress();
+        } else {
+            showLfsOutput(`Failed to search: ${response?.message || 'Unknown error'}`, 'error');
+            hideLfsProgress();
+        }
+    } catch (error) {
+        console.error('handleLfsSearch error:', error);
+        const errorMsg = error.message.includes('Receiving end does not exist')
+            ? 'Content script not loaded.\n\nPlease refresh the SharePoint page (F5) and try again.'
+            : `Error: ${error.message}`;
+        showLfsOutput(errorMsg, 'error');
+        hideLfsProgress();
+    }
+}
+
+function buildLfsCAML(columnName, operator, value) {
+    let whereClause = '';
+
+    if (operator === 'IsNull') {
+        whereClause = `<IsNull><FieldRef Name='${columnName}'/></IsNull>`;
+    } else if (operator === 'IsNotNull') {
+        whereClause = `<IsNotNull><FieldRef Name='${columnName}'/></IsNotNull>`;
+    } else if (operator === 'Contains') {
+        whereClause = `<Contains><FieldRef Name='${columnName}'/><Value Type='Text'>${escapeXml(value)}</Value></Contains>`;
+    } else if (operator === 'BeginsWith') {
+        whereClause = `<BeginsWith><FieldRef Name='${columnName}'/><Value Type='Text'>${escapeXml(value)}</Value></BeginsWith>`;
+    } else if (operator === 'In') {
+        const values = value.split(',').map(v => v.trim());
+        const orParts = values.map(v => `<Eq><FieldRef Name='${columnName}'/><Value Type='Text'>${escapeXml(v)}</Value></Eq>`).join('');
+        whereClause = `<Or>${orParts}</Or>`;
+    } else {
+        whereClause = `<${operator}><FieldRef Name='${columnName}'/><Value Type='Text'>${escapeXml(value)}</Value></${operator}>`;
+    }
+
+    const rowLimit = elements.lfsRowLimit.value || '100';
+
+    return `<View><Query><Where>${whereClause}</Where></Query><RowLimit>${rowLimit}</RowLimit></View>`;
+}
+
+function displayLfsResults(results) {
+    if (!results || results.length === 0) {
+        elements.lfsResultsSection.style.display = 'block';
+        elements.lfsSummaryText.textContent = 'No items found';
+        elements.lfsResultsThead.innerHTML = '';
+        elements.lfsResultsTbody.innerHTML = '<tr><td colspan="100%">No matching items found</td></tr>';
+        return;
+    }
+
+    // Get all unique columns from results
+    const columns = Object.keys(results[0]);
+
+    // Build header
+    elements.lfsResultsThead.innerHTML = '<tr>' +
+        columns.map(col => `<th>${col}</th>`).join('') +
+        '</tr>';
+
+    // Build body
+    elements.lfsResultsTbody.innerHTML = results.map(item =>
+        '<tr>' +
+        columns.map(col => `<td>${item[col] !== null ? item[col] : ''}</td>`).join('') +
+        '</tr>'
+    ).join('');
+
+    // Update summary
+    elements.lfsSummaryText.innerHTML = `
+        <strong>📊 Summary:</strong><br>
+        • Total items found: ${results.length}
+    `;
+
+    elements.lfsResultsSection.style.display = 'block';
+}
+
+function clearLfsResults() {
+    elements.lfsListDropdown.value = '';
+    elements.lfsColumnDropdown.innerHTML = '<option value="">-- Select a column --</option>';
+    elements.lfsColumnDropdown.style.display = 'none';
+    elements.lfsColumnTypeGroup.style.display = 'none';
+    elements.lfsColumnName.value = '';
+    elements.lfsOperator.value = 'Eq';
+    elements.lfsValue.value = '';
+    elements.lfsRowLimit.value = '100';
+    elements.lfsResultsSection.style.display = 'none';
+    lfsResults = [];
+    lfsAvailableColumns = [];
+    lfsAvailableLists = [];
+}
+
+function exportLfsResults() {
+    if (lfsResults.length === 0) {
+        alert('No results to export');
+        return;
+    }
+
+    // Get all columns from results
+    const columns = Object.keys(lfsResults[0]);
+
+    let csv = '';
+
+    // Header
+    csv += columns.join(',') + '\n';
+
+    // Rows
+    lfsResults.forEach(item => {
+        const row = columns.map(col => {
+            const val = item[col] !== undefined ? item[col] : '';
+            return '"' + String(val).replace(/"/g, '""') + '"';
+        });
+        csv += row.join(',') + '\n';
+    });
+
+    // Download
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'list_filter_specific_results.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function showLfsProgress(text) {
+    elements.lfsProgress.style.display = 'block';
+    elements.lfsProgressText.textContent = text;
+}
+
+function hideLfsProgress() {
+    elements.lfsProgress.style.display = 'none';
+}
+
+function showLfsError(message) {
+    hideLfsProgress();
+    alert('Error: ' + message);
+}
+
+function showLfsOutput(message, type = 'info') {
+    const outputDiv = document.createElement('div');
+    outputDiv.className = `lfs-output-message`;
+    outputDiv.style.cssText = `
+        margin-top: 10px;
+        padding: 10px;
+        border-radius: 4px;
+        background: ${type === 'error' ? '#fde8e8' : type === 'success' ? '#e6f4ea' : '#e8f0fe'};
+        border: 1px solid ${type === 'error' ? '#d13438' : type === 'success' ? '#107c10' : '#0078d4'};
+        color: ${type === 'error' ? '#d13438' : type === 'success' ? '#107c10' : '#0078d4'};
+        white-space: pre-wrap;
+    `;
+    outputDiv.textContent = message;
+
+    // Remove previous messages
+    const prevMessages = document.querySelectorAll('.lfs-output-message');
+    prevMessages.forEach(msg => msg.remove());
+
+    // Insert before results section
+    if (elements.lfsResultsSection && elements.lfsResultsSection.parentNode) {
+        elements.lfsResultsSection.parentNode.insertBefore(outputDiv, elements.lfsResultsSection);
+    }
+}
+
+// Handle List Filter Specific Get Lists
+async function handleLfsGetLists() {
+    try {
+        showLfsOutput('Loading lists...', 'info');
+
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tabs[0]) {
+            showLfsOutput('No active tab found', 'error');
+            return;
+        }
+
+        const response = await chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'getAllLists'
+        });
+
+        if (response && response.success) {
+            lfsAvailableLists = response.lists || [];
+            populateLfsListDropdown(lfsAvailableLists);
+            showLfsOutput(`Found ${lfsAvailableLists.length} lists`, 'success');
+        } else {
+            showLfsOutput(`Failed to get lists: ${response?.message || 'Unknown error'}`, 'error');
+        }
+    } catch (error) {
+        console.error('handleLfsGetLists error:', error);
+        const errorMsg = error.message.includes('Receiving end does not exist')
+            ? 'Content script not loaded.\n\nPlease refresh the SharePoint page (F5) and try again.'
+            : `Error: ${error.message}`;
+        showLfsOutput(errorMsg, 'error');
+    }
+}
+
+function populateLfsListDropdown(lists) {
+    elements.lfsListDropdown.innerHTML = '<option value="">-- Select a list --</option>';
+    lists.forEach(list => {
+        const option = document.createElement('option');
+        option.value = list.title;
+        option.textContent = list.title;
+        elements.lfsListDropdown.appendChild(option);
+    });
+}
+
+// Handle List Filter Specific Get Columns
+async function handleLfsGetColumns() {
+    const listTitle = elements.lfsListDropdown.value.trim();
+    if (!listTitle) {
+        showLfsOutput('Please select a list first', 'error');
+        return;
+    }
+
+    try {
+        showLfsOutput('Loading columns...', 'info');
+
+        const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+        if (!tabs[0]) {
+            showLfsOutput('No active tab found', 'error');
+            return;
+        }
+
+        const response = await chrome.tabs.sendMessage(tabs[0].id, {
+            action: 'getListFields',
+            listTitle: listTitle
+        });
+
+        if (response && response.success) {
+            lfsAvailableColumns = response.fields || [];
+            populateLfsColumnDropdown(lfsAvailableColumns);
+            showLfsOutput(`Found ${lfsAvailableColumns.length} columns`, 'success');
+        } else {
+            showLfsOutput(`Failed to get columns: ${response?.message || 'Unknown error'}`, 'error');
+        }
+    } catch (error) {
+        console.error('handleLfsGetColumns error:', error);
+        const errorMsg = error.message.includes('Receiving end does not exist')
+            ? 'Content script not loaded.\n\nPlease refresh the SharePoint page (F5) and try again.'
+            : `Error: ${error.message}`;
+        showLfsOutput(errorMsg, 'error');
+    }
+}
+
+function populateLfsColumnDropdown(fields) {
+    elements.lfsColumnDropdown.innerHTML = '<option value="">-- Select a column --</option>';
+    fields.forEach(field => {
+        const option = document.createElement('option');
+        option.value = field.internalName;
+        option.textContent = `${field.title} (${field.type})`;
+        option.dataset.type = field.type;
+        elements.lfsColumnDropdown.appendChild(option);
+    });
+    elements.lfsColumnDropdown.style.display = 'block';
+}
 
 // Handle Search List Search
 async function handleSlSearch() {
